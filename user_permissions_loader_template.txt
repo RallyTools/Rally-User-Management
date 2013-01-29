@@ -1,0 +1,31 @@
+UserID	LastName	FirstName	DisplayName	Type	Workspace	WorkspaceOrProjectName	Role	ObjectID
+user1@company.com	One	User	User One	WorkspacePermission	Mark W Workspace	Mark W Workspace	User	2890498610
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Couloir Chute Mapping: Heli-Ski	Editor	2890498688
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Avalanche Hazard Mapping	Editor	2890731604
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Sandbox	Editor	2975788132
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Child Project 1	Editor	2975793052
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Child Project 2	Editor	2975793255
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Open-Source Online Mapping Server	Editor	4625248927
+user1@company.com	One	User	User One	ProjectPermission	Mark W Workspace	Child Project 3	Editor	4929903520
+user1@company.com	One	User	User One	WorkspacePermission	Mark W VS-TFS	Mark W VS-TFS	User	9207058860
+user1@company.com	One	User	User One	ProjectPermission	Mark W VS-TFS	TFSProject	Editor	9207058950
+user2@company.com	Two	User	User Two	WorkspacePermission	Mark W Workspace	Mark W Workspace	User	2890498610
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Couloir Chute Mapping: Heli-Ski	Editor	2890498688
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Avalanche Hazard Mapping	Editor	2890731604
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Sandbox	Editor	2975788132
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Child Project 1	Editor	2975793052
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Child Project 2	Editor	2975793255
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Open-Source Online Mapping Server	Editor	4625248927
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W Workspace	Child Project 3	Editor	4929903520
+user2@company.com	Two	User	User Two	WorkspacePermission	Mark W VS-TFS	Mark W VS-TFS	User	9207058860
+user2@company.com	Two	User	User Two	ProjectPermission	Mark W VS-TFS	TFSProject	Editor	9207058950
+user3@company.com	Three	User	User Three	WorkspacePermission	Mark W Workspace	Mark W Workspace	User	2890498610
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Couloir Chute Mapping: Heli-Ski	Editor	2890498688
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Avalanche Hazard Mapping	Editor	2890731604
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Sandbox	Editor	2975788132
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Child Project 1	Editor	2975793052
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Child Project 2	Editor	2975793255
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Open-Source Online Mapping Server	Editor	4625248927
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W Workspace	Child Project 3	Editor	4929903520
+user3@company.com	Three	User	User Three	WorkspacePermission	Mark W VS-TFS	Mark W VS-TFS	User	9207058860
+user3@company.com	Three	User	User Three	ProjectPermission	Mark W VS-TFS	TFSProject	Editor	9207058950
