@@ -24,12 +24,6 @@ and performs the following functions:
 - Assigns and/or updates team memberships for users across projects
 - Enables or disables user in your Rally subscription
 
-
-Warning!!!  Although Team Membership is a Read-Only attribute in Rally Webservices,
-it is possible to remove the Team Membership attribute by setting a User’s ProjectPermission
-to NoAccess on a Project for which that User is a Team Member. The Team Membership
-attribute is not guaranteed to be preserved when _Updating_ User Permissions using these scripts.
-
 The contents of this Github repository include:
 
 - enable_or_disable_users.rb                    - Script to bulk enable or disable users
