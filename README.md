@@ -9,6 +9,7 @@ Rally-User-Management provides the following updates and enhancements from the o
 - Updated to use rally_api gem instead of rally_rest_api
 - rally_api greatly improves speed and reliability.
 - Provides bulk permission management granular to Projects (original provisioned at Workspace level only)
+- Provides capability to bulk assign or update team membership
 
 Rally-User-Management requires:
 - Ruby 1.9.3
@@ -20,6 +21,7 @@ The Rally user management toolkit takes a set of users formatted in a Tab-Delimi
 and performs the following functions:
 - Creates the users in your Rally subscription if they do not exist, and
 - Assigns and/or updates permissions to users across workspaces and projects.
+- Assigns and/or updates team memberships for users across projects
 - Enables or disables user in your Rally subscription
 
 
@@ -37,10 +39,10 @@ The contents of this Github repository include:
 - user_helper.rb                                - Helper class with many utility functions
 - user_permissions_loader.rb                    - Script to upload users and permissions
 - user_permissions_loader_template.txt          - Template file showing what an upload file should look like
-- user_permissions_summary.rb                   - Script to output summary of user permissions for all users
+- user_permissions_summary.rb                   - Script to output summary of user permissions AND Team Membership for all users
 - user_permissions_template_generator.rb        - Script to generate template of WorkspacePermissions and
 -                                                 ProjectPermissions for all users in the new_user_list file
-- user_team_membership_summary.rb               - Script that summarizes team membership(s) for all users
+- user_team_membership_summary.rb               - Script that summarizes just team membership(s) for all users
 - README.docx                                   - User guide Word document
 - README.md                                     - This README
 - README.pdf                                    - User guide PDF
