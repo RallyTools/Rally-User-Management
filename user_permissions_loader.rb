@@ -2,7 +2,7 @@
 
 # encoding: UTF-8
 
-# Usage: ruby user_permissions_updater.rb user_permissions_loader.txt
+# Usage: ruby user_permissions_loader.rb user_permissions_loader.txt
 # Expected input files are defined as global variables below
 
 # Delimited list of user permissions:
@@ -23,7 +23,7 @@ $permissions_filename = ARGV[0]
 
 if $permissions_filename == nil
 # This is the default of the file to be used for uploading user permissions
-  $permissions_filename               = 'user_permissions_upload.txt'
+  $permissions_filename               = 'user_permissions_loader.txt'
 end
 
 if File.exists?(File.dirname(__FILE__) + "/" + $permissions_filename) == false
@@ -92,7 +92,8 @@ def update_permission(header, row)
   workspace_name         = row[header[5]].strip
   workspace_project_name = row[header[6]].strip
   permission_level       = row[header[7]].strip
-  object_id              = row[header[8]].strip
+  team_member            = row[header[8]].strip
+  object_id              = row[header[9]].strip
 
   # look up user
   user = @uh.find_user(username)
@@ -134,6 +135,8 @@ def update_permission(header, row)
       @logger.error "Project #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this project."
     end
 
+    # Update Team Membership (Only applicable at project level)
+    @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
   end
 
 end
