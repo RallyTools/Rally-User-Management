@@ -35,7 +35,7 @@ if File.exists?(File.dirname(__FILE__) + "/" + $user_list_filename) == false
   exit
 end
 
-$template_output_fields          =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role ObjectID}
+$template_output_fields          =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
 
 #Setup role constants
 $ADMIN = 'Admin'
@@ -89,11 +89,13 @@ def prep_record_for_export(input_record, type, input_user)
   workspace_or_project_name   = input_record["Name"]
   workspace_role_sample       = $USER
   project_role_sample         = $EDITOR
+
   if type == :type_workspace
     permission_type = "WorkspacePermission"
     # Below is needed in order to _repeat_ workspace name in output
     workspace_name = workspace_or_project_name
     role_sample = workspace_role_sample
+    team_member_sample          = "N/A"
   end
   if type == :type_project
     permission_type = "ProjectPermission"
@@ -102,6 +104,7 @@ def prep_record_for_export(input_record, type, input_user)
     this_workspace = input_record["Workspace"]
     workspace_name = this_workspace["Name"]
     role_sample = project_role_sample
+    team_member_sample          = "Yes"
   end
 
   object_id = input_record["ObjectID"]
@@ -115,6 +118,7 @@ def prep_record_for_export(input_record, type, input_user)
   output_data << workspace_name
   output_data << workspace_or_project_name
   output_data << role_sample
+  output_data << team_member_sample
   output_data << object_id
 
   return(output_data)
