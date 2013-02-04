@@ -37,7 +37,7 @@ $my_delim                           = "\t"
 # Note: When creating many users, pre-fetching UserPermissions, Workspaces and Projects
 # can radically improve performance since it also allows for
 # a memory cache of existing Workspace/Projects and Workspace/Project permissions in Rally.
-#This avoids the need to go back to Rally with a query in order to check for Workspace/Project existence and
+# This avoids the need to go back to Rally with a query in order to check for Workspace/Project existence and
 # if a Permission update represents a change with respect to what's already there.
 # Doing this in memory makes the code run much faster
 
@@ -149,7 +149,7 @@ begin
 
   log_file = File.open("user_permissions_loader.log", "a")
   @logger = Logger.new MultiIO.new(STDOUT, log_file)
-  # @logger = Logger.new(STDOUT)
+
   @logger.level = Logger::INFO #DEBUG | INFO | WARNING | FATAL
 
 
