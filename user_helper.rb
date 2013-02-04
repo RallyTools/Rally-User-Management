@@ -34,9 +34,12 @@ class UserHelper
   EDITOR = 'Editor'
   VIEWER = 'Viewer'
   NOACCESS = 'No Access'
+  TEAMMEMBER_YES = 'Yes'
+  TEAMMEMBER_NO = 'No'
   
   def initialize(rally, logger, create_flag = true)
     @rally = rally
+    @rally_json_connection = @rally.rally_connection
     @logger = logger 
     @create_flag = create_flag
     @cached_users = {}
@@ -103,7 +106,7 @@ class UserHelper
 
     user_query = RallyAPI::RallyQuery.new()
     user_query.type = :user
-    user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID"
+    user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
     user_query.page_size = 200 #optional - default is 200
     user_query.limit = 90000 #optional - default is 99999
     user_query.order = "UserName Asc"
@@ -226,7 +229,6 @@ class UserHelper
   end
 
   def update_project_permissions(project, user, permission, new_user)
-    @logger.info permission
     if new_user or project_permissions_updated?(project, user, permission)
       update_permission_projectlevel(project, user, permission)
     else
@@ -255,10 +257,23 @@ class UserHelper
       @logger.error "Error creating user: #{$!}"
       raise $!
     end
-    return new_user
+
+    # Grab full object of the created user and return so that we can use it later
+    new_user_query = RallyAPI::RallyQuery.new()
+    new_user_query.type = :user
+    new_user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+    new_user_query.query_string = "(UserName = \"#{user_name.downcase}\")"
+    new_user_query.order = "UserName Asc"
+
+    query_results = @rally.find(new_user_query)
+    new_user_created = query_results.first
+
+    # Cache the new user
+    @cached_users[user_name.downcase] = new_user_created
+
+    return new_user_created
   end
 
-  
   def disable_user(user)
     if user.Disabled == 'False'
       if @create_flag
@@ -285,6 +300,72 @@ class UserHelper
     else
       @logger.info "#{user.UserName} already enabled in Rally"
       return false
+    end
+  end
+
+  # Updates team membership. Note - this utilizes un-documented and un-supported Rally endpoint
+  # that is not part of WSAPI REST
+  # it also digs down into rally_api to directly PUT against this endpoint
+  # not guaranteed to work forever
+
+  def update_team_membership(user, project_oid, project_name, team_member_setting)
+
+    # look up user
+    these_team_memberships = user["TeamMemberships"]
+    this_user_oid = user["ObjectID"]
+
+    # Default for whether user is member or not
+    is_member = false
+
+    # loop through team memberships to see if User is already a member
+    if these_team_memberships != nil then
+      these_team_memberships.each do |this_membership|
+
+        this_membership_ref = this_membership._ref
+        this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
+
+        if this_membership_oid == project_oid then
+          is_member = true
+        end
+      end
+    end
+
+    url_base = make_team_member_url(this_user_oid, project_oid)
+
+    # if User isn't a team member and update value is Yes then make them one
+    if is_member == false && team_member_setting.downcase == TEAMMEMBER_YES.downcase then
+
+      # Construct payload object
+      my_payload = {}
+      my_team_member_setting = {}
+      my_team_member_setting ["TeamMember"] = "true"
+      my_payload["projectuser"] = my_team_member_setting
+
+      args = {:method => :put}
+      args[:payload] = my_payload
+
+      # @rally_json_connection does a to_json on object to convert
+      # payload object to JSON: {"projectuser":{"TeamMember":"true"}}
+      response = @rally_json_connection.send_request(url_base, args)
+      @logger.info "  #{user.UserName} #{project_name} - Team Membership set to #{team_member_setting}"
+
+      # if User is a team member and update value is No then remove them from team
+    elsif is_member == true && team_member_setting.downcase == TEAMMEMBER_NO.downcase then
+
+      # Construct payload object
+      my_payload = {}
+      my_team_member_setting = {}
+      my_team_member_setting ["TeamMember"] = "false"
+      my_payload["projectuser"] = my_team_member_setting
+
+      args = {:method => :put}
+      args[:payload] = my_payload
+
+      # @rally_json_connection will convert payload object to JSON: {"projectuser":{"TeamMember":"false"}}
+      response = @rally_json_connection.send_request(url_base, args)
+      @logger.info "  #{user.UserName} #{project_name} - Team Membership set to #{team_member_setting}"
+    else
+      @logger.info "  #{user.UserName} #{project_name} - No changes to Team Membership"
     end
   end
   
@@ -322,6 +403,27 @@ class UserHelper
       @logger.info "Error in parsing permission"
     end
     nil
+  end
+
+  # Creates a team membership URL for request against (undocumented, non-WSAPI and non-supported)
+  # team membership endpoint.
+  # Method: PUT
+  # URL Format:
+  # https://rally1.rallydev.com/slm/webservice/x/project/12345678910/projectuser/12345678911.js
+  # Payload: {"projectuser":{"TeamMember":"true"}}
+  # Where 12345678910 => Project OID
+  # And   12345678911 => User OID
+
+  def make_team_member_url(input_user_oid, input_project_oid)
+
+    rally_url = @rally.rally_url + "/webservice/"
+    wsapi_version = @rally.wsapi_version
+
+    make_team_member_url = rally_url + wsapi_version +
+        "/project/" + input_project_oid.to_s +
+        "/projectuser/" + input_user_oid.to_s + ".js"
+
+    return make_team_member_url
   end
   
   # check if the new permissions are different than what the user currently has
