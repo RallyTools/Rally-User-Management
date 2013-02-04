@@ -469,7 +469,6 @@ class UserHelper
       end
 
     else # no cached users - query info from Rally
-      puts "Got to ProjectPermission Comparison of Rally Lookup of UserPermissions"
 
       project_permission_query = RallyAPI::RallyQuery.new()
       project_permission_query.type = :projectpermission
