@@ -21,7 +21,7 @@ $my_limit               = 50000
 
 $type_workspacepermission = "WorkspacePermission"
 $type_projectpermission   = "ProjectPermission"
-$output_fields            =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role ObjectID}
+$output_fields            =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
 $my_output_file           = "user_permissions_summary.txt"
 $my_delim                 = "\t"
 
@@ -31,6 +31,32 @@ def strip_role_from_permission(str)
   # Removes the role from the Workspace,ProjectPermission String so we're left with just the
   # Workspace/Project Name
   str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
+end
+
+def is_team_member(project_oid, team_memberships)
+
+  # Default values
+  is_member = false
+  return_value = "No"
+
+  # First check if team_memberships are nil then loop through and look for a match on
+  # Project OID
+  if team_memberships != nil then
+
+    team_memberships.each do |this_membership|
+      this_membership_ref = this_membership._ref
+
+      # Grab the Project OID off of the ref URL
+      this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
+
+      if this_membership_oid == project_oid then
+        is_member = true
+      end
+    end
+  end
+
+  if is_member then return_value = "Yes" end
+  return return_value
 end
 
 begin
@@ -53,7 +79,7 @@ begin
   #==================== Querying Rally ==========================
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
-  user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID"
+  user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
   user_query.page_size = 200 #optional - default is 200
   user_query.limit = 50000 #optional - default is 99999
   user_query.order = "UserName Asc"
@@ -89,16 +115,30 @@ begin
     user_permissions = this_user.UserPermissions
     user_permissions.each do |this_permission|
 
+      # Set default for team membership
+      team_member = "No"
+
       permission_type = this_permission._type
-      if this_permission._type == $type_workspacepermission
+      if this_permission._type == $type_workspacepermission then
         workspace_name = strip_role_from_permission(this_permission.Name)
         workspace_project_obj = this_permission["Workspace"]
+        team_member = "N/A"
+
+        # Grab the ObjectID
+        object_id = workspace_project_obj["ObjectID"]
       else
         workspace_project_obj = this_permission["Project"]
-      end
 
-      # Grab the ObjectID
-      object_id = workspace_project_obj["ObjectID"]
+        # Grab the ObjectID
+        object_id = workspace_project_obj["ObjectID"]
+
+        # Convert OID to a string so is_team_member can do string comparison
+        object_id_string = object_id.to_s
+
+        # Determine if user is a team member on this project
+        these_team_memberships = this_user["TeamMemberships"]
+        team_member = is_team_member(object_id_string, these_team_memberships)
+      end
 
       # Grab workspace or project name from permission name
       workspace_project_name = strip_role_from_permission(this_permission.Name)
@@ -112,6 +152,7 @@ begin
       output_record << workspace_name
       output_record << workspace_project_name
       output_record << this_permission.Role
+      output_record << team_member
       output_record << object_id
       summary_csv << output_record
     end
@@ -121,6 +162,7 @@ begin
       output_record << this_user.LastName
       output_record << this_user.FirstName
       output_record << this_user.DisplayName
+      output_record << "N/A"
       output_record << "N/A"
       output_record << "N/A"
       output_record << "N/A"
