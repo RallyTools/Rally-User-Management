@@ -365,7 +365,7 @@ class UserHelper
       response = @rally_json_connection.send_request(url_base, args)
       @logger.info "  #{user.UserName} #{project_name} - Team Membership set to #{team_member_setting}"
     else
-      @logger.info "  #{user.UserName} #{project_name} - No changes to Team Membership"
+      @logger.info "  #{user.UserName} #{project_name} - No creation of or changes to Team Membership"
     end
   end
   
