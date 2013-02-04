@@ -42,7 +42,10 @@ $ADMIN = 'Admin'
 $USER = 'User'
 $EDITOR = 'Editor'
 $VIEWER = 'Viewer'
-$NOACCESS = 'NoAccess'
+$NOACCESS = 'No Access'
+$TEAMMEMBER_YES = 'Yes'
+$TEAMMEMBER_NO = 'No'
+$TEAMMEMBER_NA = 'N/A'
 
 # symbols
 :type_workspace
@@ -95,16 +98,16 @@ def prep_record_for_export(input_record, type, input_user)
     # Below is needed in order to _repeat_ workspace name in output
     workspace_name = workspace_or_project_name
     role_sample = workspace_role_sample
-    team_member_sample          = "N/A"
+    team_member_sample          = $TEAMMEMBER_NA
   end
   if type == :type_project
     permission_type = "ProjectPermission"
-    # Below is needed in order to _repeat_ workspace name in output
+
     this_project = input_record
     this_workspace = input_record["Workspace"]
     workspace_name = this_workspace["Name"]
     role_sample = project_role_sample
-    team_member_sample          = "Yes"
+    team_member_sample = $TEAMMEMBER_YES
   end
 
   object_id = input_record["ObjectID"]
