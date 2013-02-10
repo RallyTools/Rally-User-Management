@@ -64,6 +64,15 @@ $user_create_delay                  = 0 # seconds buffer time after creating use
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
 
+#Setup Role constants
+$ADMIN = 'Admin'
+$USER = 'User'
+$EDITOR = 'Editor'
+$VIEWER = 'Viewer'
+$NOACCESS = 'No Access'
+$TEAMMEMBER_YES = 'Yes'
+$TEAMMEMBER_NO = 'No'
+
 #Setup constants
 $workspace_permission_type          = "WorkspacePermission"
 $project_permission_type            = "ProjectPermission"
@@ -135,8 +144,13 @@ def update_permission(header, row)
       @logger.error "Project #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this project."
     end
 
-    # Update Team Membership (Only applicable at project level)
-    @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
+    # Update Team Membership (Only applicable for Editor Permissions at Project level)
+    if permission_level == $EDITOR then
+      @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
+    else
+      @logger.info "  Permission level: #{permission_level}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
+         "Team Member. No Team Membership update: N/A."
+    end
   end
 
 end
