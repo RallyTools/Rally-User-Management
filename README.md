@@ -26,6 +26,8 @@ and performs the following functions:
 
 The contents of this Github repository include:
 
+- change_usernames_template.csv                 - Template file showing format for username/email bulk update mapping
+- change_usernames.rb                           - Script to bulk update usernames and email addresses
 - enable_or_disable_users.rb                    - Script to bulk enable or disable users
 - enable_or_disable_users_template.txt          - Template file contain list of users to enable/disable
 - my_vars.rb                                    - User configurable variables
