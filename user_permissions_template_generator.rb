@@ -12,7 +12,7 @@ $headers.vendor                 = "Rally Labs"
 $headers.version                = "0.10"
 
 #API Version
-$wsapi_version                   = "1.40"
+$wsapi_version                   = "1.41"
 
 # constants
 $my_base_url                     = "https://rally1.rallydev.com/slm"
@@ -63,14 +63,14 @@ end
 #==================== Get a list of OPEN projects in Workspace  ========================
 #
 def get_open_projects (input_workspace)
-  project_query    		                   = RallyAPI::RallyQuery.new()
-  project_query.workspace		             = input_workspace
+  project_query    		               = RallyAPI::RallyQuery.new()
+  project_query.workspace		       = input_workspace
   project_query.project		               = nil
   project_query.project_scope_up	       = true
-  project_query.project_scope_down       = true
-  project_query.type		                 = :project
-  project_query.fetch		                 = "Name,State,ObjectID,Workspace,Name"
-  project_query.query_string	           = "(State = \"Open\")"
+  project_query.project_scope_down             = true
+  project_query.type		               = :project
+  project_query.fetch		               = "Name,State,ObjectID,Workspace,Name"
+  project_query.query_string	               = "(State = \"Open\")"
 
   begin
     open_projects   	= @rally.find(project_query)
@@ -174,10 +174,10 @@ begin
   #==================== Querying Rally ==========================
   # Query for Subscription information.
   #
-  subscription_query	              = RallyAPI::RallyQuery.new()
-  subscription_query.type	          = :subscription
+  subscription_query	            = RallyAPI::RallyQuery.new()
+  subscription_query.type	    = :subscription
   subscription_query.fetch          = "Name,Workspaces,Name,ObjectID,State"
-  my_subscription		                = @rally.find(subscription_query)
+  my_subscription		    = @rally.find(subscription_query)
 
   # Workspace and Project caches
   $open_workspaces = Set.new()
