@@ -34,12 +34,9 @@ end
 # Field delimiter for permissions file
 $my_delim                           = "\t"
 
-# Note: When creating many users, pre-fetching UserPermissions, Workspaces and Projects
-# can radically improve performance since it also allows for
-# a memory cache of existing Workspace/Projects and Workspace/Project permissions in Rally.
-# This avoids the need to go back to Rally with a query in order to check for Workspace/Project existence and
-# if a Permission update represents a change with respect to what's already there.
-# Doing this in memory makes the code run much faster
+
+# Note: When creating or updating many users, pre-fetching UserPermissions
+# can improve performance
 
 # However, when creating/updating only one or two users, the up-front cost of caching is probably more expensive
 # than the time saved, so setting this flag to false probably makes sense when creating/updating small
@@ -53,7 +50,7 @@ $headers.vendor                     = "Rally Labs"
 $headers.version                    = "0.10"
 
 #API Version
-$wsapi_version                      = "1.40"
+$wsapi_version                      = "1.41"
 
 # Fetch/query/create parameters
 $my_headers                         = $headers
@@ -93,16 +90,91 @@ class MultiIO
 end
 
 def update_permission(header, row)
-  username               = row[header[0]].strip
-  last_name              = row[header[1]].strip
-  first_name             = row[header[2]].strip
-  display_name           = row[header[3]].strip
-  permission_type        = row[header[4]].strip
-  workspace_name         = row[header[5]].strip
-  workspace_project_name = row[header[6]].strip
-  permission_level       = row[header[7]].strip
-  team_member            = row[header[8]].strip
-  object_id              = row[header[9]].strip
+  
+  # LastName, FirstName, DisplayName, WorkspaceName are optional fields  
+  username_field               = row[header[0]]
+  last_name_field              = row[header[1]]
+  first_name_field             = row[header[2]]
+  display_name_field           = row[header[3]]
+  permission_type_field        = row[header[4]]
+  workspace_name_field         = row[header[5]]
+  workspace_project_name_field = row[header[6]]
+  permission_level_field       = row[header[7]]
+  team_member_field            = row[header[8]]
+  object_id_field              = row[header[9]]
+  
+  # Check to see if any required fields are nil
+  required_field_isnil = false
+  required_nil_fields = ""
+  
+  if username_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += "UserName"
+  else
+    username = username_field.strip
+  end
+  if permission_type_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " PermissionType"
+  else
+    permission_type = permission_type_field.strip
+  end
+  if workspace_project_name_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " Workspace/ProjectName"
+  else
+    workspace_project_name = workspace_project_name_field.strip
+  end
+  if permission_level_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " PermissionLevel"
+  else
+    permission_level = permission_level_field.strip
+  end
+  if team_member_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " TeamMember"
+  else
+    team_member = team_member_field.strip
+  end
+  if object_id_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " ObjectID"    
+  else
+    object_id = object_id_field.strip
+  end
+  
+  if required_field_isnil then
+    puts "One or more required fields: "
+    puts required_nil_fields
+    puts "Is missing! Skipping this row..."
+    return
+  end
+  
+  # Filter for possible nil values in optional fields
+  if !last_name_field.nil? then
+    last_name = last_name_field.strip
+  else
+    last_name = "N/A"
+  end
+  
+  if !first_name_field.nil? then
+    first_name = first_name_field.strip
+  else
+    first_name = "N/A"
+  end
+  
+  if !display_name_field.nil? then
+    display_name = display_name_field.strip
+  else
+    display_name = "N/A"
+  end
+  
+  if !workspace_project_name_field.nil? then
+    workspace_project_name = workspace_project_name_field.strip
+  else
+    workspace_project_name = "N/A"
+  end
 
   # look up user
   user = @uh.find_user(username)
@@ -182,10 +254,14 @@ begin
   @uh = UserHelper.new(@rally, @logger, true)
 
   # Note: pre-fetching Workspaces and Projects can help performance
-  if $enable_cache
-    @logger.info "Caching workspaces and projects..."
-    @uh.cache_workspaces_projects()
-
+  # Plus, we pretty much have to do it because later Workspace/Project queries
+  # in UserHelper, that don't come off the Subscription List, will fail
+  # unless they are in the user's Default Workspace
+  @logger.info "Caching workspaces and projects..."
+  @uh.cache_workspaces_projects()
+  
+  # Caching Users can help performance if we're doing updates for a lot of users
+  if $enable_user_cache
     @logger.info "Caching user list..."
     @uh.cache_users()
   end
@@ -206,4 +282,5 @@ begin
 rescue => ex
   @logger.error ex
   @logger.error ex.backtrace
+  @logger.error ex.message
 end
