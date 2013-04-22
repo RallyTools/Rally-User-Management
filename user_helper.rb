@@ -4,28 +4,6 @@
 require 'rally_api'
 require 'pp'
 
-class Workspace
-  def initialize(workspace_name)
-    @Name = workspace_name
-  end
-  def Name
-    @Name
-  end
-end
-
-class Project
-  def initialize(project_name, ref)
-    @Name = project_name
-    @_ref = ref
-  end
-  def Name
-    @Name
-  end
-  def _ref
-    @_ref
-  end
-end
-
 class UserHelper
   
   #Setup constants
@@ -36,6 +14,15 @@ class UserHelper
   NOACCESS = 'No Access'
   TEAMMEMBER_YES = 'Yes'
   TEAMMEMBER_NO = 'No'
+  
+  # User filter for ENABLED users only
+  # For purposes of speed/efficiency, summarize Enabled Users ONLY
+  summarize_enabled_only = true
+  enabled_only_filter = "(Disabled = \"False\")"
+  
+  # fetch data
+  initial_user_fetch            = "UserName,FirstName,LastName,DisplayName"
+  detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
   
   def initialize(rally, logger, create_flag = true)
     @rally = rally
@@ -77,21 +64,26 @@ class UserHelper
     if query_results.total_result_count == 0
       return nil
     else
-      return query_results.first
+      # Cache user for use next time
+      this_user = query_results.first
+      @cached_users[this_user["UserName"].downcase] = this_user
+      @logger.info "Caching User: #{this_user.UserName}"      
+      
+      return this_user
     end
   end
 
   #==================== Get a list of OPEN projects in Workspace  ========================
   #
   def get_open_projects (input_workspace)
-    project_query    		                   = RallyAPI::RallyQuery.new()
-    project_query.workspace		             = input_workspace
-    project_query.project		               = nil
-    project_query.project_scope_up	       = true
-    project_query.project_scope_down       = true
+    project_query    		                 = RallyAPI::RallyQuery.new()
+    project_query.workspace		         = input_workspace
+    project_query.project		         = nil
+    project_query.project_scope_up	         = true
+    project_query.project_scope_down             = true
     project_query.type		                 = :project
     project_query.fetch		                 = "Name,State,ObjectID,Workspace,ObjectID"
-    project_query.query_string	           = "(State = \"Open\")"
+    project_query.query_string	                 = "(State = \"Open\")"
 
     begin
       open_projects   	= @rally.find(project_query)
@@ -106,22 +98,52 @@ class UserHelper
 
     user_query = RallyAPI::RallyQuery.new()
     user_query.type = :user
-    user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+    user_query.fetch = initial_user_fetch
     user_query.page_size = 200 #optional - default is 200
     user_query.limit = 90000 #optional - default is 99999
     user_query.order = "UserName Asc"
+    
+      # Filter for enabled only
+    if $summarize_enabled_only then
+      user_query.query_string = $enabled_only_filter
+      number_found_suffix = "Enabled Users."
+    else
+      number_found_suffix = "Users."
+    end
 
-    query_results = @rally.find(user_query)
+    initial_query_results = @rally.find(user_query)
 
-    number_users = query_results.total_result_count
+    number_users = initial_query_results.total_result_count
     count = 1
     notify_increment = 25
     @cached_users = {}
-    query_results.each do |user|
+    initial_query_results.each do | initial_user |
       notify_remainder=count%notify_increment
-      if notify_remainder==0 then @logger.info "Cached #{count} of #{number_users} users" end
-      @cached_users[user.UserName] = user
-      count+=1
+      if notify_remainder==0 then @logger.info "Cached #{count} of #{number_users} #{number_found_suffix}" end
+      
+      # Follow-up user-by-user query of Rally for Detailed User Properties
+      user_query.fetch = detail_user_fetch
+      
+      # Setup query parameters for Rally query of detailed user info
+      this_user_name = initial_user["UserName"]
+      query_string = "(UserName = \"#{this_user_name}\")"
+      user_query.query_string = query_string
+      
+      # Query Rally for single-user detailed info, including Permissions, Projects, and
+      # Team Memberships
+      detail_user_query_results = @rally.find(user_query)
+      
+      # If found, cache the user
+      number_found = detail_user_query_results.total_result_count
+      if number_found > 0 then
+        this_user = detail_user_query_results.first
+        @cached_users[user.UserName] = this_user
+        count+=1
+      else
+        puts "User: #{this_user_name} not found in follow-up query. Skipping..."
+        next  
+      end
+
     end
   end
 
@@ -131,10 +153,10 @@ class UserHelper
       return @cached_workspaces[object_id]
     else
       # workspace not found in cache - go to Rally
-      workspace_query    		                   = RallyAPI::RallyQuery.new()
-      workspace_query.project		               = nil
-      workspace_query.type		                 = :workspace
-      workspace_query.fetch		                 = "Name,State,ObjectID"
+      workspace_query    		           = RallyAPI::RallyQuery.new()
+      workspace_query.project		           = nil
+      workspace_query.type		           = :workspace
+      workspace_query.fetch		           = "Name,State,ObjectID"
       workspace_query.query_string	           = "((ObjectID = \"#{object_id}\") AND (State = \"Open\"))"
 
       workspace_results   	                   = @rally.find(workspace_query)
@@ -142,6 +164,12 @@ class UserHelper
       if workspace_results.total_result_count != 0 then
         # Workspace found via Rally query, return it
         workspace = workspace_results.first()
+        
+        # Cache it for use next time
+        @cached_workspaces[workspace["ObjectID"]] = workspace
+        @logger.info "Caching Workspace: #{workspace.Name}"
+        
+        # Return workspace object
         return workspace
       else
         # Workspace not found in Rally _or_ cache - return Nil
@@ -158,8 +186,8 @@ class UserHelper
     else
       # project not found in cache - go to Rally
       project_query    		                   = RallyAPI::RallyQuery.new()
-      project_query.type		                 = :project
-      project_query.fetch		                 = "Name,State,ObjectID"
+      project_query.type		           = :project
+      project_query.fetch		           = "Name,State,ObjectID,Workspace,ObjectID"
       project_query.query_string	           = "((ObjectID = \"#{object_id}\") AND (State = \"Open\"))"
 
       project_results   	                   = @rally.find(project_query)
@@ -167,6 +195,12 @@ class UserHelper
       if project_results.total_result_count != 0 then
         # Project found via Rally query, return it
         project = project_results.first()
+        
+        # Cache it for use next time
+        @cached_projects[project["ObjectID"]] = project
+        @logger.info "Caching Project: #{project.Name}"
+        
+        # Return it
         return project
       else
         # Project not found in Rally _or_ cache - return Nil
@@ -270,7 +304,6 @@ class UserHelper
 
     # Cache the new user
     @cached_users[user_name.downcase] = new_user_created
-
     return new_user_created
   end
 
