@@ -7,7 +7,7 @@ rally_url        = "https://10.32.16.78/slm"
 rally_user       = "test@rallydev.com"
 rally_password   = "treblid!"
 rally_ws_version = "1.33"
-filename         = 'users_update.csv'
+filename         = 'ldap_user_load_template.csv'
 
 def get_rally_users()
   

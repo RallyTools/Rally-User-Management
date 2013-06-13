@@ -30,6 +30,8 @@ The contents of this Github repository include:
 - change_usernames.rb                           - Script to bulk update usernames and email addresses
 - enable_or_disable_users.rb                    - Script to bulk enable or disable users
 - enable_or_disable_users_template.txt          - Template file contain list of users to enable/disable
+- ldap_user_load_script.rb			            - Script to update Onprem Ldap Username field when enabling LDAP for Rally On-Premise
+- ldap_user_load_template.csv		            - Template file contain list of Username and OnpremLdapUsername values.
 - my_vars.rb                                    - User configurable variables
 - new_user_list_template.txt                    - START HERE! This is the list of users/attributes you want to create
 - user_helper.rb                                - Helper class with many utility functions
