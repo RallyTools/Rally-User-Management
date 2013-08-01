@@ -5,7 +5,7 @@ require 'rally_api'
 require 'pp'
 
 class UserHelper
-  
+
   #Setup constants
   ADMIN = 'Admin'
   USER = 'User'
@@ -14,16 +14,7 @@ class UserHelper
   NOACCESS = 'No Access'
   TEAMMEMBER_YES = 'Yes'
   TEAMMEMBER_NO = 'No'
-  
-  # User filter for ENABLED users only
-  # For purposes of speed/efficiency, summarize Enabled Users ONLY
-  summarize_enabled_only = true
-  enabled_only_filter = "(Disabled = \"False\")"
-  
-  # fetch data
-  initial_user_fetch            = "UserName,FirstName,LastName,DisplayName"
-  detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
-  
+    
   def initialize(rally, logger, create_flag = true)
     @rally = rally
     @rally_json_connection = @rally.rally_connection
@@ -32,6 +23,16 @@ class UserHelper
     @cached_users = {}
     @cached_workspaces = {}
     @cached_projects = {}
+    
+    # User filter for ENABLED users only
+    # For purposes of speed/efficiency, summarize Enabled Users ONLY
+    @summarize_enabled_only = true
+    @enabled_only_filter = "(Disabled = \"False\")"
+    
+    # fetch data
+    @initial_user_fetch            = "UserName,FirstName,LastName,DisplayName"
+    @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+
   end
 
   def get_cached_users()
@@ -53,7 +54,7 @@ class UserHelper
 
     single_user_query = RallyAPI::RallyQuery.new()
     single_user_query.type = :user
-    single_user_query.fetch = "UserName,FirstName,LastName,DisplayName,Disabled,UserPermissions,Name,Role,Project"
+    single_user_query.fetch = @detail_user_fetch
     single_user_query.page_size = 200 #optional - default is 200
     single_user_query.limit = 90000 #optional - default is 99999
     single_user_query.order = "UserName Asc"
@@ -98,14 +99,14 @@ class UserHelper
 
     user_query = RallyAPI::RallyQuery.new()
     user_query.type = :user
-    user_query.fetch = initial_user_fetch
+    user_query.fetch = @initial_user_fetch
     user_query.page_size = 200 #optional - default is 200
     user_query.limit = 90000 #optional - default is 99999
     user_query.order = "UserName Asc"
     
       # Filter for enabled only
-    if $summarize_enabled_only then
-      user_query.query_string = $enabled_only_filter
+    if @summarize_enabled_only then
+      user_query.query_string = @enabled_only_filter
       number_found_suffix = "Enabled Users."
     else
       number_found_suffix = "Users."
@@ -122,7 +123,7 @@ class UserHelper
       if notify_remainder==0 then @logger.info "Cached #{count} of #{number_users} #{number_found_suffix}" end
       
       # Follow-up user-by-user query of Rally for Detailed User Properties
-      user_query.fetch = detail_user_fetch
+      user_query.fetch = @detail_user_fetch
       
       # Setup query parameters for Rally query of detailed user info
       this_user_name = initial_user["UserName"]
@@ -137,7 +138,7 @@ class UserHelper
       number_found = detail_user_query_results.total_result_count
       if number_found > 0 then
         this_user = detail_user_query_results.first
-        @cached_users[user.UserName] = this_user
+        @cached_users[this_user.UserName] = this_user
         count+=1
       else
         puts "User: #{this_user_name} not found in follow-up query. Skipping..."
@@ -551,7 +552,7 @@ class UserHelper
         # loop through permissions and look to see if there's an existing permission for this
         # workspace, and if so, has it changed
         user_permissions = this_user.UserPermissions
-        user_permissions.each do |this_permission|
+        user_permissions.each do | this_permission |
           if this_permission._type == "WorkspacePermission" then
             if this_permission.Workspace.ObjectID == workspace.ObjectID then
               number_matching_workspaces += 1
