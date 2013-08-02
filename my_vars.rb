@@ -1,5 +1,5 @@
-$my_username		        = 'user@company.com'
-$my_password		        = 'topsecret'
+$my_username		        = 'julien.parouty@ni.com'
+$my_password		        = 'eVAqw4rz'
 $my_base_url		        = "https://rally1.rallydev.com/slm"
 
 #API Version

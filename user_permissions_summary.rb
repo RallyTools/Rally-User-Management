@@ -19,20 +19,35 @@ $my_headers             = $headers
 $my_page_size           = 200
 $my_limit               = 50000
 
+# Mode options:
+# :standard => Outputs permission attributes only
+# :extended => Outputs enhanced field list including Enabled/Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation
+$summary_mode = :standard
+
 $type_workspacepermission = "WorkspacePermission"
 $type_projectpermission   = "ProjectPermission"
-$output_fields            =  %w{UserID LastName FirstName DisplayName Role OfficeLocation Disabled Type Workspace WorkspaceOrProjectName ProjectRole TeamMember ObjectID}
+$standard_output_fields   =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
+$extended_output_fields   =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID Disabled NetworkID Role CostCenter Department OfficeLocation }
+
 $my_output_file           = "user_permissions_summary.txt"
 $my_delim                 = "\t"
 
-# fetch data
 $initial_fetch            = "UserName,FirstName,LastName,DisplayName"
-$detail_fetch             = "UserName,FirstName,LastName,DisplayName,Role,OfficeLocation,Disabled,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
+$standard_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
+$extended_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships,Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
 
-# For purposes of speed/efficiency, summarize Enabled Users ONLY
-$summarize_enabled_only = false
 $enabled_only_filter = "(Disabled = \"False\")"
 
+if $summary_mode == :extended then
+  $summarize_enabled_only = false
+  $output_fields = $extended_output_fields
+  $detail_fetch = $extended_detail_fetch
+else
+  # For purposes of speed/efficiency, summarize Enabled Users ONLY
+  $summarize_enabled_only = true
+  $output_fields = $standard_output_fields
+  $detail_tech = $standard_detail_fetch
+end
 
 if $my_delim == nil then $my_delim = "," end
 
@@ -198,15 +213,21 @@ begin
         output_record << this_user.LastName
         output_record << this_user.FirstName
         output_record << this_user.DisplayName
-        output_record << this_user.Role
-        output_record << this_user.OfficeLocation
-        output_record << this_user.Disabled
         output_record << this_permission._type
         output_record << workspace_name
         output_record << workspace_project_name
         output_record << this_permission.Role
         output_record << team_member
         output_record << object_id
+        "Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
+        if $summary_mode == :extended then
+          output_record << this_user.Disabled
+          output_record << this_user.NetworkID
+          output_record << this_user.Role
+          output_record << this_user.CostCenter
+          output_record << this_user.Department
+          output_record << this_user.OfficeLocation
+        end
         summary_csv << output_record
       end
       if user_permissions.length == 0
@@ -215,15 +236,20 @@ begin
         output_record << this_user.LastName
         output_record << this_user.FirstName
         output_record << this_user.DisplayName
-        output_record << this_user.Role
-	output_record << this_user.OfficeLocation
-        output_record << this_user.Disabled
         output_record << "N/A"
         output_record << "N/A"
         output_record << "N/A"
         output_record << "N/A"
         output_record << "N/A"
         output_record << "N/A"
+        if $summary_mode == :extended then
+          output_record << this_user.Disabled
+          output_record << this_user.NetworkID         
+          output_record << this_user.Role
+          output_record << this_user.CostCenter
+          output_record << this_user.Department
+          output_record << this_user.OfficeLocation
+        end        
         summary_csv << output_record
       end
     # User not found in follow-up detail Query - skip this user 
