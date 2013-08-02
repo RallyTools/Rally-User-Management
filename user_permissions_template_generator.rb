@@ -35,8 +35,7 @@ if File.exists?(File.dirname(__FILE__) + "/" + $user_list_filename) == false
   exit
 end
 
-$template_output_fields          =  %w{UserID LastName FirstName DisplayName Role OfficeLocation Disabled Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
-#$template_output_fields          =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
+$template_output_fields          =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
 
 #Setup role constants
 $ADMIN = 'Admin'
@@ -90,12 +89,9 @@ def prep_record_for_export(input_record, type, input_user)
   last_name_sample            = input_user["LastName"]
   first_name_sample           = input_user["FirstName"]
   display_name_sample         = input_user["DisplayName"]
-  role_sample		      = input_user["Role"]
-  office_location_sample      = input_user["OfficeLocation"]
-  disabled_sample             = input_user["Disabled"]
   workspace_or_project_name   = input_record["Name"]
   workspace_role_sample       = $USER
-  project_role_sample         = $VIEWER
+  project_role_sample         = $EDITOR
 
   if type == :type_workspace
     permission_type = "WorkspacePermission"
@@ -121,9 +117,6 @@ def prep_record_for_export(input_record, type, input_user)
   output_data << last_name_sample
   output_data << first_name_sample
   output_data << display_name_sample
-  output_data << role_sample
-  output_data << office_location_sample
-  output_data << disabled_sample
   output_data << permission_type
   output_data << workspace_name
   output_data << workspace_or_project_name
@@ -140,14 +133,10 @@ def process_template(header, row)
 
   # Assemble User data from input file
   this_user = {}
-  this_user["UserName"]       = row[header[0]].strip
-  this_user["LastName"]       = row[header[1]].strip
-  this_user["FirstName"]      = row[header[2]].strip
-  this_user["DisplayName"]    = row[header[3]].strip
-  this_user["Role"]           = row[header[4]].strip
-  this_user["OfficeLocation"] = row[header[5]].strip
-  this_user["Disabled"]       = row[header[6]].strip
-  
+  this_user["UserName"]    = row[header[0]].strip
+  this_user["LastName"]    = row[header[1]].strip
+  this_user["FirstName"]   = row[header[2]].strip
+  this_user["DisplayName"] = row[header[3]].strip
 
   # # Loop through open Workspaces, output Workspace information
   $open_workspaces.each do | this_workspace |
