@@ -9,6 +9,12 @@ $my_username       = "user@company.com"
 $my_password       = "password"
 $wsapi_version     = "1.41"
 
+# Mode options:
+# :usernameandemail => resets both UserName and Email to the updated value
+# :usernameonly => only resets UserName. Email address remains unchanged
+$mode              = :usernameonly
+# $mode = :usernameonly
+
 $users_filename = ARGV[0]
 
 if $users_filename == nil
@@ -44,7 +50,9 @@ def update_username(header, row)
       rally_user_toupdate = rally_user.first()
       fields = {}
       fields["UserName"] = new_username
-      fields["EmailAddress"] = new_username
+      if $mode == :usernameandemail then
+        fields["EmailAddress"] = new_username
+      end
       rally_user_updated = @rally.update(:user, rally_user_toupdate.ObjectID, fields) #by ObjectID
       puts "Rally user #{exist_username} successfully changed to #{new_username}"
     rescue => ex
