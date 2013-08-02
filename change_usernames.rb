@@ -12,8 +12,7 @@ $wsapi_version     = "1.41"
 # Mode options:
 # :usernameandemail => resets both UserName and Email to the updated value
 # :usernameonly => only resets UserName. Email address remains unchanged
-$mode              = :usernameonly
-# $mode = :usernameonly
+$mode              = :usernameandemail
 
 $users_filename = ARGV[0]
 
