@@ -145,9 +145,9 @@ def update_permission(header, row)
   end
   
   if required_field_isnil then
-    puts "One or more required fields: "
-    puts required_nil_fields
-    puts "Is missing! Skipping this row..."
+    @logger.warning "One or more required fields: "
+    @logger.warning required_nil_fields
+    @logger.warning "Is missing! Skipping this row..."
     return
   end
   
