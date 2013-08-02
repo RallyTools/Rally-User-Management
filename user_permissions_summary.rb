@@ -46,7 +46,7 @@ else
   # For purposes of speed/efficiency, summarize Enabled Users ONLY
   $summarize_enabled_only = true
   $output_fields = $standard_output_fields
-  $detail_tech = $standard_detail_fetch
+  $detail_fetch = $standard_detail_fetch
 end
 
 if $my_delim == nil then $my_delim = "," end
