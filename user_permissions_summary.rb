@@ -21,16 +21,16 @@ $my_limit               = 50000
 
 $type_workspacepermission = "WorkspacePermission"
 $type_projectpermission   = "ProjectPermission"
-$output_fields            =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
+$output_fields            =  %w{UserID LastName FirstName DisplayName Role OfficeLocation Disabled Type Workspace WorkspaceOrProjectName ProjectRole TeamMember ObjectID}
 $my_output_file           = "user_permissions_summary.txt"
 $my_delim                 = "\t"
 
 # fetch data
 $initial_fetch            = "UserName,FirstName,LastName,DisplayName"
-$detail_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
+$detail_fetch             = "UserName,FirstName,LastName,DisplayName,Role,OfficeLocation,Disabled,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
 
 # For purposes of speed/efficiency, summarize Enabled Users ONLY
-$summarize_enabled_only = true
+$summarize_enabled_only = false
 $enabled_only_filter = "(Disabled = \"False\")"
 
 
@@ -79,12 +79,11 @@ begin
   config[:username]       = $my_username
   config[:password]       = $my_password
   config[:version]        = $wsapi_version
-  config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()
-
+  config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()	
   puts "Connecting to Rally: #{$my_base_url} as #{$my_username}..."
 
   @rally = RallyAPI::RallyRestJson.new(config)
-
+  
   #==================== Querying Rally ==========================
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
@@ -143,7 +142,7 @@ begin
     number_found = detail_user_query_results.total_result_count
     if number_found > 0 then
       this_user = detail_user_query_results.first
-      
+     
       # Summarize where we are in processing
       notify_remainder=count%notify_increment
       if notify_remainder==0 then puts "Processed #{count} of #{n_users} " + number_found_suffix end
@@ -199,6 +198,9 @@ begin
         output_record << this_user.LastName
         output_record << this_user.FirstName
         output_record << this_user.DisplayName
+        output_record << this_user.Role
+        output_record << this_user.OfficeLocation
+        output_record << this_user.Disabled
         output_record << this_permission._type
         output_record << workspace_name
         output_record << workspace_project_name
@@ -213,6 +215,9 @@ begin
         output_record << this_user.LastName
         output_record << this_user.FirstName
         output_record << this_user.DisplayName
+        output_record << this_user.Role
+	output_record << this_user.OfficeLocation
+        output_record << this_user.Disabled
         output_record << "N/A"
         output_record << "N/A"
         output_record << "N/A"
