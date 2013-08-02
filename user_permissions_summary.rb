@@ -21,8 +21,7 @@ $my_limit               = 50000
 
 # Mode options:
 # :standard => Outputs permission attributes only
-# :extended => Outputs enhanced field list including Enabled/Disabled, Rolenly resets UserName. Email address remains unchanged
-# fetch data
+# :extended => Outputs enhanced field list including Enabled/Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation
 $summary_mode = :standard
 
 $type_workspacepermission = "WorkspacePermission"
