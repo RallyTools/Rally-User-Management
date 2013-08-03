@@ -1,4 +1,2 @@
 UserID	LastName	FirstName	DisplayName
 user1@company.com	One	User	User One
-user2@company.com	Two	User	User Two
-user3@company.com	Three	User	User Three

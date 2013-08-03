@@ -94,12 +94,11 @@ begin
   config[:username]       = $my_username
   config[:password]       = $my_password
   config[:version]        = $wsapi_version
-  config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()
-
+  config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()	
   puts "Connecting to Rally: #{$my_base_url} as #{$my_username}..."
 
   @rally = RallyAPI::RallyRestJson.new(config)
-
+  
   #==================== Querying Rally ==========================
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
@@ -158,7 +157,7 @@ begin
     number_found = detail_user_query_results.total_result_count
     if number_found > 0 then
       this_user = detail_user_query_results.first
-      
+     
       # Summarize where we are in processing
       notify_remainder=count%notify_increment
       if notify_remainder==0 then puts "Processed #{count} of #{n_users} " + number_found_suffix end

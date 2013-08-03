@@ -271,6 +271,18 @@ class UserHelper
     end
   end
   
+  def update_display_name(user, new_display_name)
+    begin
+      fields = {}
+      fields["DisplayName"] = new_display_name
+      rally_user_updated = @rally.update(:user, user.ObjectID, fields) #by ObjectID
+      @logger.info "  #{user.UserName} - Display Name set to #{new_display_name}"
+    rescue => ex
+      @logger.info "Rally user #{user.UserName} not updated due to error"
+      puts ex
+    end
+  end
+  
   def create_user(user_name, display_name, first_name, last_name)
 
     new_user_obj = {}
