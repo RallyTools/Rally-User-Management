@@ -7,7 +7,7 @@ $my_base_url       = "https://rally1.rallydev.com/slm"
 
 $my_username       = "user@company.com"
 $my_password       = "password"
-$wsapi_version     = "1.41"
+$wsapi_version     = "1.43"
 
 # Mode options:
 # :usernameandemail => resets both UserName and Email to the updated value
@@ -33,7 +33,7 @@ if FileTest.exist?( my_vars ) then require my_vars end
 def update_username(header, row)
   exist_username        = row[header[0]].strip
   new_username          = row[header[1]].strip
-  
+
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
   user_query.fetch = "ObjectID,UserName,EmailAddress,FirstName,LastName,Disabled"
@@ -69,7 +69,7 @@ begin
   $headers                            = RallyAPI::CustomHttpHeader.new()
   $headers.name                       = "Ruby User Management Tool 2: Change Usernames"
   $headers.vendor                     = "Rally Labs"
-  $headers.version                    = "0.10"
+  $headers.version                    = "0.20"
 
   config                  = {:base_url => $my_base_url}
   config[:username]       = $my_username

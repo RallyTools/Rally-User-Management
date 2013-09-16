@@ -14,10 +14,10 @@ $my_base_url		        = "https://rally1.rallydev.com/slm"
 
 $my_page_size		        = 50
 $my_fetch		            = "true"
-$my_workspace		        = "MyWorkspace"
-$my_project		          = "MyProject"
+$my_workspace		        = "My Workspace"
+$my_project		          = "My Project"
 
-$my_output_file           = "user_team_membership_summary.txt"
+$my_output_file         = "user_team_membership_summary.txt"
 
 # Output file delimiter
 $my_delim = "\t"
@@ -25,13 +25,13 @@ $my_delim = "\t"
 $output_fields          =  %w{UserID MembershipNumber TeamName}
 
 #Setting custom headers
-$headers = RallyAPI::CustomHttpHeader.new()
-$headers.name = "Ruby Team Membership Summary Report"
-$headers.vendor = "Rally Labs"
-$headers.version = "0.10"
+$headers                = RallyAPI::CustomHttpHeader.new()
+$headers.name           = "Ruby Team Membership Summary Report"
+$headers.vendor         = "Rally Labs"
+$headers.version        = "0.20"
 
 #API Version
-$wsapi_version          = "1.40"
+$wsapi_version          = "1.43"
 
 # Load (and maybe override with) my personal/private variables from a file...
 my_vars= File.dirname(__FILE__) + "/my_vars.rb"

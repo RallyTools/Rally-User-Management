@@ -10,7 +10,7 @@ rally_ws_version = "1.33"
 filename         = 'ldap_username_load_template.csv'
 
 def get_rally_users()
-  
+
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
   user_query.fetch = "ObjectID,UserName,FirstName,LastName,OnpremLdapUsername"
@@ -25,7 +25,7 @@ end
 def update_user(header, row)
   username        = row[header[0]]
   onprem_username = row[header[1]]
-  
+
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
   user_query.fetch = "ObjectID,UserName,FirstName,LastName,OnpremLdapUsername"
@@ -37,13 +37,13 @@ def update_user(header, row)
   if rally_user.total_result_count == 0
     puts "Rally user #{username} not found"
   else
-    begin         
+    begin
       rally_user_toupdate = rally_user.first()
       fields = {}
       fields["OnpremLdapUsername"] = onprem_username
       rally_user_updated = @rally.update(:user, rally_user_toupdate.ObjectID, fields) #by ObjectID
       puts "Rally user #{username} updated successfully - onprem username set to #{rally_user_updated["OnpremLdapUsername"]}"
-      
+
     rescue => ex
       puts " Rally user #{username} not updated due to error"
       puts ex
@@ -60,7 +60,7 @@ begin
   $headers = RallyAPI::CustomHttpHeader.new()
   $headers.name = "Ruby LDAP User Load Script"
   $headers.vendor = "Rally Software"
-  $headers.version = "0.10"
+  $headers.version = "0.20"
 
   config                  = {:base_url => rally_url}
   config[:username]       = rally_user
@@ -79,7 +79,7 @@ begin
   rows.each do |row|
     update_user(header, row)
   end
-  
+
   puts "Querying to find existing Rally Users without an OnpremLdapUsername attribute..."
   rally_users = get_rally_users()
   puts "Found: #{rally_users.total_result_count} that do not have an OnpremLdapUsername."

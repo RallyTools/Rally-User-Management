@@ -1,9 +1,16 @@
-$my_username		        = 'user@company.com'
-$my_password		        = 'topsecret'
+$my_username		        = 'mdwilliams@rallydev.com'
+$my_password		        = '970R@lly$mdw'
 $my_base_url		        = "https://rally1.rallydev.com/slm"
 
 #API Version
-$wsapi_version                  = "1.41"
+$wsapi_version              = "1.43"
+
+# Maximum age of workspace/project cache in days before triggering
+# automatic refresh. Setting $max_cache_age = 0 will force refresh
+# every time user does a run.
+# Note: keeping local cache of workspaces/projects really improves
+# speed if you're doing multiple runs in a particular work session
+$max_cache_age              = 1
 
 # The $enable_user_cache parameter applies only when using the user_permissions_loader.rb script
 

@@ -12,7 +12,7 @@ $my_username       = "user@company.com"
 $my_password       = "password"
 $default_filename  = 'users_enable_or_disable.txt'
 
-$wsapi_version     = "1.40"
+$wsapi_version     = "1.43"
 
 # Constants
 $enable_flag = "enable"
@@ -59,7 +59,7 @@ if FileTest.exist?( my_vars ) then require my_vars end
 
 def update_user(header, row)
   username        = row[header[0]]
-  
+
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
   user_query.fetch = "ObjectID,UserName,FirstName,LastName,Disabled"
@@ -92,7 +92,7 @@ begin
   $headers = RallyAPI::CustomHttpHeader.new()
   $headers.name = "Ruby User Enabler-Disabler"
   $headers.vendor = "Rally Labs"
-  $headers.version = "0.10"
+  $headers.version = "0.20"
 
   config                  = {:base_url => $my_base_url}
   config[:username]       = $my_username
