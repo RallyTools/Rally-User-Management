@@ -1,4 +1,22 @@
-# Copyright 2002-2013 Rally Software Development Corp. All Rights Reserved.
+# Copyright (c) 2013 Rally Software Development
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 #!/usr/bin/ruby
 ########################################################################
@@ -15,23 +33,23 @@ $my_base_url		        = "https://rally1.rallydev.com/slm"
 $my_page_size		        = 50
 $my_fetch		            = "true"
 $my_workspace		        = "My Workspace"
-$my_project		          = "My Project"
+$my_project		            = "My Project"
 
-$my_output_file         = "user_team_membership_summary.txt"
+$my_output_file             = "user_team_membership_summary.txt"
 
 # Output file delimiter
 $my_delim = "\t"
 
-$output_fields          =  %w{UserID MembershipNumber TeamName}
+$output_fields              =  %w{UserID MembershipNumber TeamName}
 
 #Setting custom headers
-$headers                = RallyAPI::CustomHttpHeader.new()
-$headers.name           = "Ruby Team Membership Summary Report"
-$headers.vendor         = "Rally Labs"
-$headers.version        = "0.20"
+$headers                    = RallyAPI::CustomHttpHeader.new()
+$headers.name               = "Ruby User Management Tool 2::Ruby Team Membership Summary Report"
+$headers.vendor             = "Rally Labs"
+$headers.version            = "0.50"
 
 #API Version
-$wsapi_version          = "1.43"
+$wsapi_version              = "1.43"
 
 # Load (and maybe override with) my personal/private variables from a file...
 my_vars= File.dirname(__FILE__) + "/my_vars.rb"
