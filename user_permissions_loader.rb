@@ -1,4 +1,22 @@
-# Copyright 2002-2013 Rally Software Development Corp. All Rights Reserved.
+# Copyright (c) 2013 Rally Software Development
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 # encoding: UTF-8
 
@@ -8,10 +26,10 @@
 # Delimited list of user permissions:
 # $permissions_filename    = 'user_permissions_loader.txt'
 
-#include for rally json library gem
 require 'rally_api'
 require 'csv'
 require 'logger'
+require './multi_io.rb'
 require File.dirname(__FILE__) + "/user_helper.rb"
 
 # User-defined variables
@@ -23,7 +41,7 @@ $permissions_filename = ARGV[0]
 
 if $permissions_filename == nil
 # This is the default of the file to be used for uploading user permissions
-  $permissions_filename               = 'user_permissions_loader.txt'
+  $permissions_filename             = 'user_permissions_loader.txt'
 end
 
 if File.exists?(File.dirname(__FILE__) + "/" + $permissions_filename) == false
@@ -45,18 +63,22 @@ $enable_cache                       = true
 
 #Setting custom headers
 $headers                            = RallyAPI::CustomHttpHeader.new()
-$headers.name                       = "Ruby User Management Tool 2"
+$headers.name                       = "Ruby User Management Tool 2::User Permissions Loader"
 $headers.vendor                     = "Rally Labs"
-$headers.version                    = "0.10"
+$headers.version                    = "0.50"
 
 #API Version
-$wsapi_version                      = "1.41"
+$wsapi_version                      = "1.43"
 
 # Fetch/query/create parameters
 $my_headers                         = $headers
 $my_page_size                       = 200
 $my_limit                           = 50000
 $user_create_delay                  = 0 # seconds buffer time after creating user and before adding permissions
+
+# Maximum age of workspace/project cache in days before triggering
+# automatic refresh
+$max_cache_age                      = 1
 
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
@@ -74,24 +96,9 @@ $TEAMMEMBER_NO = 'No'
 $workspace_permission_type          = "WorkspacePermission"
 $project_permission_type            = "ProjectPermission"
 
-# Class to help Logger output to both STOUT and to a file
-class MultiIO
-  def initialize(*targets)
-     @targets = targets
-  end
-
-  def write(*args)
-    @targets.each {|t| t.write(*args)}
-  end
-
-  def close
-    @targets.each(&:close)
-  end
-end
-
 def update_permission(header, row)
-  
-  # LastName, FirstName, DisplayName, WorkspaceName are optional fields  
+
+  # LastName, FirstName, DisplayName, WorkspaceName are optional fields
   username_field               = row[header[0]]
   last_name_field              = row[header[1]]
   first_name_field             = row[header[2]]
@@ -102,11 +109,11 @@ def update_permission(header, row)
   permission_level_field       = row[header[7]]
   team_member_field            = row[header[8]]
   object_id_field              = row[header[9]]
-  
+
   # Check to see if any required fields are nil
   required_field_isnil = false
   required_nil_fields = ""
-  
+
   if username_field.nil? then
     required_field_isnil = true
     required_nil_fields += "UserName"
@@ -139,37 +146,37 @@ def update_permission(header, row)
   end
   if object_id_field.nil? then
     required_field_isnil = true
-    required_nil_fields += " ObjectID"    
+    required_nil_fields += " ObjectID"
   else
     object_id = object_id_field.strip
   end
-  
+
   if required_field_isnil then
     @logger.warning "One or more required fields: "
     @logger.warning required_nil_fields
     @logger.warning "Is missing! Skipping this row..."
     return
   end
-  
+
   # Filter for possible nil values in optional fields
   if !last_name_field.nil? then
     last_name = last_name_field.strip
   else
     last_name = "N/A"
   end
-  
+
   if !first_name_field.nil? then
     first_name = first_name_field.strip
   else
     first_name = "N/A"
   end
-  
+
   if !display_name_field.nil? then
     display_name = display_name_field.strip
   else
     display_name = "N/A"
   end
-  
+
   if !workspace_project_name_field.nil? then
     workspace_project_name = workspace_project_name_field.strip
   else
@@ -185,7 +192,7 @@ def update_permission(header, row)
   #WorkspacePermission: User, First Workspace alphabetically
   #ProjectPermission: No Access, First Project within above workspace, alphabetically
   #This behavior is necessary because a user must have at least one Workspace,Project permission pairing
-  #The above grants provide no access, but, will result in a "creation" artifact within the new user's
+  #The above grants provide no write-able access, but, will result in a "creation" artifact within the new user's
   #permission set
 
   if user == nil
@@ -251,15 +258,29 @@ begin
 
   #Helper Methods
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true)
+  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age)
 
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
   # in UserHelper, that don't come off the Subscription List, will fail
   # unless they are in the user's Default Workspace
+
+  # The following block will pre-fetch Workspaces and Projects either:
+  # (1) From Rally directly, if no local cache exists or local cache is stale
+  #     (older than $max_cache_age, as specified in my_vars.rb)
+  # (2) Load from local cache files (much faster) if local cache is current
+  #     (newer than $max_cache_age, as specified in my_vars.rb)
   @logger.info "Caching workspaces and projects..."
-  @uh.cache_workspaces_projects()
-  
+  refresh_needed, reason = @uh.cache_refresh_needed()
+  if refresh_needed then
+    @logger.info "Refresh of Workspace/Project Cache from Rally is required because #{reason}."
+    @logger.info "Refreshing Workspace/Project by querying Rally for needed data."
+    @uh.cache_workspaces_projects()
+  else
+    @logger.info "Reading Workspace/Project info from local cache."
+    @uh.read_workspace_project_cache()
+  end
+
   # Caching Users can help performance if we're doing updates for a lot of users
   if $enable_user_cache
     @logger.info "Caching user list..."

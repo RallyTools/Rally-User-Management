@@ -1,15 +1,35 @@
+# Copyright (c) 2013 Rally Software Development
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 #include for rally json library gem
 require 'rally_api'
 require 'csv'
 
 #Setting custom headers
 $headers = RallyAPI::CustomHttpHeader.new()
-$headers.name           = "Ruby User Permissions Summary Report"
+$headers.name           = "Ruby User Management Tool 2::User Permissions Loader::User Permissions Summary Report"
 $headers.vendor         = "Rally Labs"
-$headers.version        = "0.10"
+$headers.version        = "0.50"
 
 #API Version
-$wsapi_version          = "1.41"
+$wsapi_version          = "1.43"
 
 # constants
 $my_base_url            = "https://rally1.rallydev.com/slm"
@@ -36,7 +56,7 @@ $initial_fetch            = "UserName,FirstName,LastName,DisplayName"
 $standard_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
 $extended_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships,Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
 
-$enabled_only_filter = "(Disabled = \"False\")"
+$enabled_only_filter      = "(Disabled = \"False\")"
 
 if $summary_mode == :extended then
   $summarize_enabled_only = false
@@ -107,7 +127,7 @@ begin
   user_query.page_size = 200 #optional - default is 200
   user_query.limit = 50000 #optional - default is 99999
   user_query.order = "UserName Asc"
-  
+
   # Filter for enabled only
   if $summarize_enabled_only then
     user_query.query_string = $enabled_only_filter
@@ -121,11 +141,11 @@ begin
 
   initial_user_query_results = @rally.find(user_query)
   n_users = initial_user_query_results.total_result_count
-  
+
   # Summarize number of found users
-  
+
   puts "Found a total of #{n_users} " + number_found_suffix
-  
+
   # Set a default value for workspace_name
   workspace_name = "N/A"
 
@@ -134,81 +154,81 @@ begin
 
   # loop through all users and output permissions summary
   puts "Summarizing users and writing permission summary output file..."
-  
+
   # Open file for output of summary
   # Output CSV header
   summary_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
   summary_csv << $output_fields
-  
+
   # Run stepwise query of users
   # More expansive fetch on single-user query
   user_query.fetch = $detail_fetch
-  
+
   initial_user_query_results.each do | this_user_init |
-    
+
     # Setup query parameters for Rally query of detailed user info
     this_user_name = this_user_init["UserName"]
     query_string = "(UserName = \"#{this_user_name}\")"
     user_query.query_string = query_string
-    
+
     # Query Rally for single-user detailed info, including Permissions, Projects, and
     # Team Memberships
     detail_user_query_results = @rally.find(user_query)
-    
+
     number_found = detail_user_query_results.total_result_count
     if number_found > 0 then
       this_user = detail_user_query_results.first
-      
+
       # Summarize where we are in processing
       notify_remainder=count%notify_increment
       if notify_remainder==0 then puts "Processed #{count} of #{n_users} " + number_found_suffix end
       count+=1
-  
+
       user_permissions = this_user.UserPermissions
       user_permissions.each do |this_permission|
-  
+
         # Set default for team membership
         team_member = "No"
-  
+
         permission_type = this_permission._type
         if this_permission._type == $type_workspacepermission then
           workspace_name = strip_role_from_permission(this_permission.Name)
           workspace_project_obj = this_permission["Workspace"]
           team_member = "N/A"
-          
+
           # Don't summarize permissions for closed Workspaces
           workspace_state = workspace_project_obj["State"]
-          
+
           if workspace_state == "Closed"
-            next          
-          end          
-  
+            next
+          end
+
           # Grab the ObjectID
           object_id = workspace_project_obj["ObjectID"]
         else
           workspace_project_obj = this_permission["Project"]
-          
+
           # Don't summarize permissions for closed Projects
           project_state = workspace_project_obj["State"]
-          
+
           if project_state == "Closed"
-            next          
-          end  
-  
+            next
+          end
+
           # Grab the ObjectID
           object_id = workspace_project_obj["ObjectID"]
-  
+
           # Convert OID to a string so is_team_member can do string comparison
           object_id_string = object_id.to_s
-  
+
           # Determine if user is a team member on this project
           these_team_memberships = this_user["TeamMemberships"]
           team_member = is_team_member(object_id_string, these_team_memberships)
         end
-  
+
         # Grab workspace or project name from permission name
         workspace_project_name = strip_role_from_permission(this_permission.Name)
-  
+
         output_record = []
         output_record << this_user.UserName
         output_record << this_user.LastName
@@ -245,20 +265,20 @@ begin
         output_record << "N/A"
         if $summary_mode == :extended then
           output_record << this_user.Disabled
-          output_record << this_user.NetworkID         
+          output_record << this_user.NetworkID
           output_record << this_user.Role
           output_record << this_user.CostCenter
           output_record << this_user.Department
           output_record << this_user.OfficeLocation
-        end        
+        end
         summary_csv << output_record
       end
-    # User not found in follow-up detail Query - skip this user 
+    # User not found in follow-up detail Query - skip this user
     else
       puts "User: #{this_user_name} not found in follow-up query. Skipping..."
       next
-    end        
-    
+    end
+
   end
 
   puts "Done! Permission summary written to #{$my_output_file}."
