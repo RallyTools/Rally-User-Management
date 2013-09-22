@@ -1,13 +1,33 @@
-# Copyright 2002-2013 Rally Software Development Corp. All Rights Reserved.
+# Copyright (c) 2013 Rally Software Development
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 require 'rally_api'
 require 'csv'
 
-rally_url        = "https://10.32.10.120/slm"
-rally_user       = "subadmin@company.com"
-rally_password   = "topsecret"
-rally_ws_version = "1.33"
-filename         = 'ldap_username_load_template.csv'
+rally_url              = "https://10.32.10.120/slm"
+rally_user             = "subadmin@company.com"
+rally_password         = "topsecret"
+
+# Default to WSAPI 1.33 to accommodate potentially older On-Premise appliances
+rally_ws_version       = "1.33"
+filename               = 'ldap_username_load_template.csv'
 
 def get_rally_users()
 
@@ -58,9 +78,9 @@ begin
 
   #Setting custom headers
   $headers = RallyAPI::CustomHttpHeader.new()
-  $headers.name = "Ruby LDAP User Load Script"
-  $headers.vendor = "Rally Software"
-  $headers.version = "0.20"
+  $headers.name           = "Ruby User Management Tool 2::Ruby LDAP User Load Script"
+  $headers.vendor         = "Rally Labs"
+  $headers.version        = "0.50"
 
   config                  = {:base_url => rally_url}
   config[:username]       = rally_user
@@ -86,7 +106,6 @@ begin
   puts "Listing..."
   rally_users.each do |user|
     puts "Rally user #{user["UserName"]} does not contain a ldap onprem username value"
-
   end
 rescue => ex
   puts ex
