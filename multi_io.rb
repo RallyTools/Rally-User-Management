@@ -1,4 +1,6 @@
-# Class to help Logger output to both STOUT and to a file
+# Helper Class to help Logger output to both STOUT and to a file
+# Attribution: see http://goo.gl/m7CUIC
+
 class MultiIO
   def initialize(*targets)
      @targets = targets
