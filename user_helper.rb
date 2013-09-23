@@ -124,17 +124,17 @@ class UserHelper
   #==================== Get a list of OPEN projects in Workspace  ========================
   #
   def get_open_projects (input_workspace)
-    project_query    		                   = RallyAPI::RallyQuery.new()
-    project_query.workspace		             = input_workspace
-    project_query.project		               = nil
-    project_query.project_scope_up	       = true
+    project_query                          = RallyAPI::RallyQuery.new()
+    project_query.workspace                = input_workspace
+    project_query.project                  = nil
+    project_query.project_scope_up         = true
     project_query.project_scope_down       = true
-    project_query.type		                 = :project
-    project_query.fetch		                 = "Name,State,ObjectID,Workspace,ObjectID"
-    project_query.query_string	           = "(State = \"Open\")"
+    project_query.type                     = :project
+    project_query.fetch                    = "Name,State,ObjectID,Workspace,ObjectID"
+    project_query.query_string             = "(State = \"Open\")"
 
     begin
-      open_projects   	= @rally.find(project_query)
+      open_projects     = @rally.find(project_query)
     rescue Exception => ex
       open_projects = nil
     end
@@ -201,13 +201,13 @@ class UserHelper
       return @cached_workspaces[object_id]
     else
       # workspace not found in cache - go to Rally
-      workspace_query    		             = RallyAPI::RallyQuery.new()
-      workspace_query.project		         = nil
-      workspace_query.type		           = :workspace
-      workspace_query.fetch		           = "Name,State,ObjectID"
-      workspace_query.query_string	     = "((ObjectID = \"#{object_id}\") AND (State = \"Open\"))"
+      workspace_query                    = RallyAPI::RallyQuery.new()
+      workspace_query.project            = nil
+      workspace_query.type               = :workspace
+      workspace_query.fetch              = "Name,State,ObjectID"
+      workspace_query.query_string       = "((ObjectID = \"#{object_id}\") AND (State = \"Open\"))"
 
-      workspace_results   	             = @rally.find(workspace_query)
+      workspace_results                  = @rally.find(workspace_query)
 
       if workspace_results.total_result_count != 0 then
         # Workspace found via Rally query, return it
@@ -233,12 +233,12 @@ class UserHelper
       return @cached_projects[object_id]
     else
       # project not found in cache - go to Rally
-      project_query    		             = RallyAPI::RallyQuery.new()
-      project_query.type		           = :project
-      project_query.fetch		           = "Name,State,ObjectID,Workspace,ObjectID"
-      project_query.query_string	     = "((ObjectID = \"#{object_id}\") AND (State = \"Open\"))"
+      project_query                    = RallyAPI::RallyQuery.new()
+      project_query.type               = :project
+      project_query.fetch              = "Name,State,ObjectID,Workspace,ObjectID"
+      project_query.query_string       = "((ObjectID = \"#{object_id}\") AND (State = \"Open\"))"
 
-      project_results   	             = @rally.find(project_query)
+      project_results                  = @rally.find(project_query)
 
       if project_results.total_result_count != 0 then
         # Project found via Rally query, return it
@@ -300,6 +300,9 @@ class UserHelper
     subscription_cache_filename = File.dirname(__FILE__) + "/" + SUB_CACHE
     workspace_cache_filename = File.dirname(__FILE__) + "/" + WORKSPACE_CACHE
     project_cache_filename = File.dirname(__FILE__) + "/" + PROJECT_CACHE
+
+    # Default to really big number to prompt refresh if files not found
+    cache_age = 10000
 
     if !FileTest.exist?(subscription_cache_filename) ||
       !FileTest.exist?(workspace_cache_filename) ||
