@@ -47,14 +47,18 @@ $summary_mode = :standard
 $type_workspacepermission = "WorkspacePermission"
 $type_projectpermission   = "ProjectPermission"
 $standard_output_fields   =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
-$extended_output_fields   =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID Disabled NetworkID Role CostCenter Department OfficeLocation }
+$extended_output_fields   =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID LastLoginDate Disabled NetworkID Role CostCenter Department OfficeLocation }
 
 $my_output_file           = "user_permissions_summary.txt"
 $my_delim                 = "\t"
 
+# Load (and maybe override with) my personal/private variables from a file...
+my_vars= File.dirname(__FILE__) + "/my_vars.rb"
+if FileTest.exist?( my_vars ) then require my_vars end
+
 $initial_fetch            = "UserName,FirstName,LastName,DisplayName"
 $standard_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
-$extended_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships,Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
+$extended_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships,LastLoginDate,Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
 
 $enabled_only_filter      = "(Disabled = \"False\")"
 
@@ -104,10 +108,6 @@ def is_team_member(project_oid, team_memberships)
 end
 
 begin
-
-  # Load (and maybe override with) my personal/private variables from a file...
-  my_vars= File.dirname(__FILE__) + "/my_vars.rb"
-  if FileTest.exist?( my_vars ) then require my_vars end
 
   #==================== Making a connection to Rally ====================
   config                  = {:base_url => $my_base_url}
@@ -240,8 +240,8 @@ begin
         output_record << this_permission.Role
         output_record << team_member
         output_record << object_id
-        "Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
         if $summary_mode == :extended then
+          output_record << this_user.LastLoginDate
           output_record << this_user.Disabled
           output_record << this_user.NetworkID
           output_record << this_user.Role
@@ -264,6 +264,7 @@ begin
         output_record << "N/A"
         output_record << "N/A"
         if $summary_mode == :extended then
+          output_record << this_user.LastLoginDate
           output_record << this_user.Disabled
           output_record << this_user.NetworkID
           output_record << this_user.Role
