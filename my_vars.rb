@@ -1,6 +1,6 @@
-$my_username		        = 'user@company.com'
-$my_password		        = 'topsecret'
-$my_base_url		        = 'https://rally1.rallydev.com/slm'
+$my_username                = 'user@company.com'
+$my_password                = 'topsecret'
+$my_base_url                = 'https://rally1.rallydev.com/slm'
 
 #API Version
 $wsapi_version              = '1.43'
@@ -63,6 +63,7 @@ $enable_user_cache          = false
 # Valid Settings:
 # :standard => Outputs permission attributes only
 # :extended => Outputs enhanced field list including:
+#              LastLoginDate
 #              Enabled/Disabled
 #              NetworkID
 #              Role
