@@ -1,6 +1,20 @@
 Rally-User-Management
 =====================
 
+## License
+
+Copyright (c) Rally Software Development Corp. 2013 Distributed under the MIT License.
+
+## Warranty
+
+The Rally User Management toolkit is available on an as-is basis. 
+
+## Support
+
+Rally Software does not actively maintain or support this toolkit. If you have a question or problem, we recommend posting it to Stack Overflow: http://stackoverflow.com/questions/ask?tags=rally
+
+## Description
+
 The Rally-User-Management kit is an enhanced toolset for Rally subscription administrators who want to bulk
 create/update users in their Rally subscription, enable/disable users, and assign permissions.
 
