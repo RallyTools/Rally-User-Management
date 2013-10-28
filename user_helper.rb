@@ -505,7 +505,7 @@ class UserHelper
           these_projects.push(this_project)
           current_workspace_oid_string = this_workspace_oid_string
         else
-          these_projects.push(this_project)
+            these_projects.push(this_project)
         end
         number_processed += 1
       end
@@ -587,6 +587,10 @@ class UserHelper
     project_cache_filename = File.dirname(__FILE__) + "/" + PROJECT_CACHE
     @logger.info "Started writing project cache to #{project_cache_filename}"
 
+    # The following results in an array of two-element arrays. The first element of each 2-element array
+    # is the ProjectOID, or the key for the project hash. The second element is the value part of the hash
+    projects_sorted_by_workspace = @cached_projects.sort_by {|key, value| value["WorkspaceOIDNumeric"]}
+
     # Output CSV header
     project_csv = CSV.open(
       project_cache_filename,
@@ -597,7 +601,9 @@ class UserHelper
 
     # Output cache to file
     # Record for CSV output
-    @cached_projects.each_pair do | project_id, this_project |
+    projects_sorted_by_workspace.each do | project_element |
+
+      this_project = project_element[1]
 
       data = []
 
@@ -671,7 +677,7 @@ class UserHelper
 
           # Loop through open projects and Cache
           open_projects.each do | this_project |
-            @logger.info "Caching Project: #{this_project.Name}"
+            this_project["WorkspaceOIDNumeric"] = this_workspace["ObjectID"]
             @cached_projects[this_project.ObjectID.to_s] = this_project
           end
         else
@@ -683,7 +689,6 @@ class UserHelper
     write_subscription_cache()
     write_workspace_cache()
     write_project_cache()
-
   end
 
   def update_workspace_permissions(workspace, user, permission, new_user)

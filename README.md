@@ -11,7 +11,7 @@ The Rally User Management toolkit is available on an as-is basis.
 
 ## Support
 
-Rally Software does not actively maintain or support this toolkit. If you have a question or problem, we recommend posting it to Stack Overflow: http://stackoverflow.com/questions/ask?tags=rally
+Rally Software does not actively maintain or support this toolkit. If you have a problem or question, we recommend  [filing a Github Issue](https://github.com/RallyTools/Rally-User-Management/issues) or posting a question to Stack Overflow: http://stackoverflow.com/questions/ask?tags=rally
 
 ## Description
 

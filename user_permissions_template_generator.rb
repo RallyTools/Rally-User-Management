@@ -43,6 +43,8 @@ $my_headers                      = $headers
 $my_page_size                    = 200
 $my_limit                        = 50000
 $my_output_file                  = "user_permissions_loader_template.txt"
+$type_workspacepermission        = "WorkspacePermission"
+$type_projectpermission          = "ProjectPermission"
 
 # Instantiate logger
 log_file = File.open("user_template_generator.log", "a")
@@ -79,14 +81,8 @@ $TEAMMEMBER_NA = 'N/A'
 # Output file delimiter
 $my_delim = "\t"
 
-def strip_role_from_permission(str)
-  # Removes the role from the Workspace,ProjectPermission String so we're left with just the
-  # Workspace/Project Name
-  str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
-end
-
 # Preps output records to write to Permissions Template file
-def prep_record_for_export(input_record, type, input_user)
+def prep_record_for_export(input_record, type, input_user, permission, is_teammember)
 
   # input_record is either a workspace or a project
 
@@ -101,9 +97,9 @@ def prep_record_for_export(input_record, type, input_user)
   if type == :type_workspace
     permission_type = "WorkspacePermission"
     # Below is needed in order to _repeat_ workspace name in output
-    workspace_name = workspace_or_project_name
-    role_sample = workspace_role_sample
-    team_member_sample          = $TEAMMEMBER_NA
+    workspace_name            = workspace_or_project_name
+    role_sample               = workspace_role_sample
+    team_member               = $TEAMMEMBER_NA
   end
   if type == :type_project
     permission_type = "ProjectPermission"
@@ -112,7 +108,7 @@ def prep_record_for_export(input_record, type, input_user)
     this_workspace = input_record["Workspace"]
     workspace_name = this_workspace["Name"]
     role_sample = project_role_sample
-    team_member_sample = $TEAMMEMBER_YES
+    team_member = is_teammember
   end
 
   object_id = input_record["ObjectID"]
@@ -125,12 +121,59 @@ def prep_record_for_export(input_record, type, input_user)
   output_data << permission_type
   output_data << workspace_name
   output_data << workspace_or_project_name
-  output_data << role_sample
-  output_data << team_member_sample
+  output_data << permission
+  output_data << is_teammember
   output_data << object_id
 
   return(output_data)
 
+end
+
+
+def strip_role_from_permission(str)
+    # Removes the role from the Workspace,ProjectPermission String so we're left with just the
+    # Workspace/Project Name
+    str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
+end
+
+def is_team_member(project_oid, team_memberships)
+
+    # Default values
+    is_member = false
+    return_value = "No"
+
+    # First check if team_memberships are nil then loop through and look for a match on
+    # Project OID
+    if team_memberships != nil then
+
+        team_memberships.each do |this_membership|
+            this_membership_ref = this_membership._ref
+
+            # Grab the Project OID off of the ref URL
+            this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
+
+            if this_membership_oid == project_oid then
+                is_member = true
+            end
+        end
+    end
+
+    if is_member then return_value = "Yes" end
+    return return_value
+end
+
+# Checks to see if input record is using:
+# Text string (i.e. Editor, Viewer)
+# Or
+# User (i.e. john.doe@company.com)
+# as source of default permissions
+def check_default_permission_type(value)
+
+    type = :stringsource
+    if !value.match(/@/).nil? then
+        type = :usersource
+    end
+    return type
 end
 
 # Preps input data from New User List
@@ -138,24 +181,127 @@ def process_template(header, row)
 
   # Assemble User data from input file
   this_user = {}
-  this_user["UserName"]    = row[header[0]].strip
-  this_user["LastName"]    = row[header[1]].strip
-  this_user["FirstName"]   = row[header[2]].strip
-  this_user["DisplayName"] = row[header[3]].strip
+  this_user["UserName"]           = row[header[0]].strip
+  this_user["LastName"]           = row[header[1]].strip
+  this_user["FirstName"]          = row[header[2]].strip
+  this_user["DisplayName"]        = row[header[3]].strip
+  this_user["DefaultPermissions"] = row[header[4]].strip
 
-  # # Loop through open Workspaces, output Workspace information
-  $open_workspaces.each_pair do | this_workspace_oid, this_workspace |
-    # Output Workspace information
-    output_workspace_record = prep_record_for_export(this_workspace, :type_workspace, this_user)
-    $template_csv << output_workspace_record
+  # Check for "type" of DefaultPermissions
+  # if field value contains '@' we know that we are copying Default Permissions from
+  # an existing user
+  default_permission_type = check_default_permission_type(this_user["DefaultPermissions"])
 
-    these_projects = $open_projects[this_workspace_oid]
+  if default_permission_type == :stringsource then
 
-    # Loop through open Projects, output Project information
-    these_projects.each do | this_project |
-      output_project_record = prep_record_for_export(this_project, :type_project, this_user)
-      $template_csv << output_project_record
-    end
+      default_permission_string = this_user["DefaultPermissions"]
+
+      # # Loop through open Workspaces, output Workspace information
+      $open_workspaces.each_pair do | this_workspace_oid, this_workspace |
+        # Output Workspace information
+        output_workspace_record = prep_record_for_export(this_workspace, :type_workspace, this_user, $USER, $TEAMMEMBER_NA)
+        $template_csv << output_workspace_record
+
+        these_projects = $open_projects[this_workspace_oid]
+
+        # Loop through open Projects, output Permission entries information
+
+        # Default the user to be a team member if they are an Editor
+        if default_permission_string.eql?($EDITOR) then
+            team_membership = $TEAMMEMBER_YES
+        else
+            team_membership = $TEAMMEMBER_NO
+        end
+
+        these_projects.each do | this_project |
+          output_project_record = prep_record_for_export(this_project, :type_project, this_user,
+                                                         default_permission_string, team_membership)
+          $template_csv << output_project_record
+        end
+      end
+  else
+      # Template user id
+      permission_template_username = this_user["DefaultPermissions"]
+
+      # Check to see if we have cached user permissions for this user source
+      if $user_permissions_cache.include?(permission_template_username)
+          permission_source_user = $user_permissions_cache[permission_template_username]
+      else
+          # Go to Rally
+          user_fetch                    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
+          user_query                    = RallyAPI::RallyQuery.new()
+          user_query.type               = :user
+          user_query.fetch              = user_fetch
+          user_query.page_size          = 200 #optional - default is 200
+          user_query.limit              = 50000 #optional - default is 99999
+          user_query.order              = "UserName Asc"
+          user_query.query_string       = "(UserName = \"#{permission_template_username}\")"
+
+          user_query_results = @rally.find(user_query)
+          n_users = user_query_results.total_result_count
+
+          if n_users == 0 then
+              @logger.warn "User #{permission_source_user} not found in Rally for source of Default Permissions. Skipping new user #{this_user.UserName}"
+              return
+          end
+
+          permission_source_user = user_query_results.first
+      end
+
+      user_permissions = permission_source_user.UserPermissions
+      user_permissions.each do | this_permission |
+
+          # Set default for team membership
+          team_member = "No"
+
+          # Grab needed data from query/cache
+          permission_type = this_permission._type
+          permission_role = this_permission.Role
+
+
+          if permission_type == $type_workspacepermission then
+              workspace_name = strip_role_from_permission(this_permission.Name)
+              this_workspace = this_permission["Workspace"]
+              team_member = "N/A"
+
+              # Don't summarize permissions for closed Workspaces
+              workspace_state = this_workspace["State"]
+
+              if workspace_state == "Closed"
+                  next
+              end
+
+              output_workspace_record = prep_record_for_export(this_workspace, :type_workspace, this_user,
+                                                               permission_role, $TEAMMEMBER_NA)
+              $template_csv << output_workspace_record
+          else
+              this_project = this_permission["Project"]
+
+              # Don't summarize permissions for closed Projects
+              project_state = this_project["State"]
+
+              if project_state == "Closed"
+                  next
+              end
+
+              # Grab the ObjectID
+              object_id = this_project["ObjectID"]
+
+              # Convert OID to a string so is_team_member can do string comparison
+              object_id_string = object_id.to_s
+
+              # Determine if user is a team member on this project
+              these_team_memberships = this_user["TeamMemberships"]
+              team_member = is_team_member(object_id_string, these_team_memberships)
+
+              # Grab workspace or project name from permission name
+              workspace_project_name = strip_role_from_permission(this_permission.Name)
+
+              output_project_record = prep_record_for_export(this_project, :type_project, this_user,
+                                                             permission_role, team_member)
+              $template_csv << output_project_record
+          end
+      end
   end
 end
 
@@ -192,6 +338,9 @@ begin
     @logger.info "Reading Workspace/Project info from local cache."
     @uh.read_workspace_project_cache()
   end
+
+  # User Permissions cache
+  $user_permissions_cache = {}
 
   # Workspace and Project caches
   $open_workspaces = @uh.get_cached_workspaces()
