@@ -152,9 +152,9 @@ def update_permission(header, row)
   end
 
   if required_field_isnil then
-    @logger.warning "One or more required fields: "
-    @logger.warning required_nil_fields
-    @logger.warning "Is missing! Skipping this row..."
+    @logger.warn "One or more required fields: "
+    @logger.warn required_nil_fields
+    @logger.warn "Is missing! Skipping this row..."
     return
   end
 
@@ -197,9 +197,16 @@ def update_permission(header, row)
 
   if user == nil
     @logger.info "User #{username} does not yet exist. Creating..."
-    user = @uh.create_user(username, display_name, first_name, last_name)
-    sleep $user_create_delay
-    new_user = true
+    begin
+        user = @uh.create_user(username, display_name, first_name, last_name)
+        sleep $user_create_delay
+        new_user = true
+    rescue => ex
+        @logger.error "Cound not create user #{username}."
+        @logger.error "NOTE: Workspace Admins must be granted permissions to create Users in order to run this script to setup new users."
+        @logger.error ex
+        return
+    end
   end
 
   # Update Workspace Permission if row type is WorkspacePermission
