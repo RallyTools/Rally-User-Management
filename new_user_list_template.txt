@@ -3,4 +3,3 @@ user1@company.com	One	User	User One	aragorn@midearth.com
 user2@company.com	Two	User	User Two	Editor
 user3@company.com	Three	User	User Three	Viewer
 user4@company.com	Four	User	User Four	boromir@midearth.com
-user5@company.com	Five	User	User Five	boromir@midearth.com
