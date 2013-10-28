@@ -16,7 +16,7 @@ Rally Software does not actively maintain or support this toolkit. If you have a
 ## Description
 
 The Rally-User-Management kit is an enhanced toolset for Rally subscription administrators who want to bulk
-create/update users in their Rally subscription, enable/disable users, and assign permissions. 
+create/update users in their Rally subscription, enable/disable users, and assign permissions.
 
 Rally-User-Management provides the following updates and enhancements from the original user_mgmt toolkit:
 
