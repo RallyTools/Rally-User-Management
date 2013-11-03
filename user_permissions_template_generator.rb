@@ -241,7 +241,7 @@ def process_template(header, row)
           n_users = user_query_results.total_result_count
 
           if n_users == 0 then
-              @logger.warn "User #{permission_source_user} not found in Rally for source of Default Permissions. Skipping new user #{this_user.UserName}"
+              @logger.warn "User #{permission_source_user} not found in Rally for source of Default Permissions. Skipping new user #{this_user['UserName']}"
               return
           end
 
