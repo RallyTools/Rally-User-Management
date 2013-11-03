@@ -134,7 +134,7 @@ def sync_permissions(header, row)
   @logger.info "Syncing permissions from: #{source_user_name} to #{target_user_name}."
   @uh.sync_project_permissions(source_user_name, target_user_name)
 
-  source_user = @uh.refresh_user(source_user_name)
+  target_user = @uh.refresh_user(target_user_name)
   if $sync_team_memberships then
     @logger.info "Syncing team memberships from: #{source_user_name} to #{target_user_name}."
     @uh.sync_team_memberships(source_user_name, target_user_name)
