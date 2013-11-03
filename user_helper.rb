@@ -121,6 +121,30 @@ class UserHelper
     end
   end
 
+  # Needed to refresh user object after updates, since user cache is stale after
+  # user settings are changed by the helper
+  def refresh_user(name)
+    single_user_query = RallyAPI::RallyQuery.new()
+    single_user_query.type = :user
+    single_user_query.fetch = @detail_user_fetch
+    single_user_query.page_size = 200 #optional - default is 200
+    single_user_query.limit = 90000 #optional - default is 99999
+    single_user_query.order = "UserName Asc"
+    single_user_query.query_string = "(UserName = \"" + name + "\")"
+
+    query_results = @rally.find(single_user_query)
+    if query_results.total_result_count == 0
+      return nil
+    else
+      # Cache user for use next time
+      this_user = query_results.first
+      @cached_users[this_user["UserName"].downcase] = this_user
+      @logger.info "Refreshed User: #{this_user.UserName}"
+
+      return this_user
+    end
+  end
+
   #==================== Get a list of OPEN projects in Workspace  ========================
   #
   def get_open_projects (input_workspace)
@@ -188,7 +212,7 @@ class UserHelper
         @cached_users[this_user.UserName] = this_user
         count+=1
       else
-        puts "User: #{this_user_name} not found in follow-up query. Skipping..."
+        @logger.warn "User: #{this_user_name} not found in follow-up query. Skipping..."
         next
       end
 
@@ -221,7 +245,7 @@ class UserHelper
         return workspace
       else
         # Workspace not found in Rally _or_ cache - return Nil
-        @logger.error "Rally Workspace: #{object_id} not found"
+        @logger.warn "Rally Workspace: #{object_id} not found"
         return nil
       end
     end
@@ -252,7 +276,7 @@ class UserHelper
         return project
       else
         # Project not found in Rally _or_ cache - return Nil
-        @logger.error "Rally Project: #{object_id} not found"
+        @logger.warn "Rally Project: #{object_id} not found"
         return nil
       end
     end
@@ -691,8 +715,209 @@ class UserHelper
     write_project_cache()
   end
 
+  # Mirrors project permission set from a source user to a target user
+  def sync_project_permissions(source_user_id, target_user_id)
+    source_user = find_user(source_user_id)
+    target_user = find_user(target_user_id)
+    if source_user.nil? then
+      @logger.warn "  Source user: #{source_user_id} Not found. Skipping sync of permissions to #{target_user_id}."
+      return
+    elsif target_user.nil then
+      @logger.warn "  Target user: #{target_user_id} Not found. Skipping sync of permissions for #{target_user_id}."
+    end
+
+    permissions_existing = target_user.UserPermissions
+    source_permissions = source_user.UserPermissions
+
+    # build permission hashes by Project ObjectID
+    source_permissions_by_project = {}
+    source_permissions.each do | this_source_permission |
+      if this_source_permission._type == "ProjectPermission" then
+        source_permissions_by_project[this_source_permission.Project.ObjectID.to_s] = this_source_permission
+      end
+    end
+
+    permissions_existing_by_project = {}
+    permissions_existing.each do | this_permission |
+      if this_permission._type == "ProjectPermission" then
+        permissions_existing_by_project[this_permission.Project.ObjectID.to_s] = this_permission
+      end
+    end
+
+    # Prepare arrays of permissions to update, create, or delete
+    permissions_to_update = []
+    permissions_to_create = []
+    permissions_to_delete = []
+
+    # Check target permissions list for permissions to create and/or update
+    source_permissions_by_project.each_pair do | this_source_project_oid, this_source_permission |
+
+      # If target hash doesn't contain the OID referenced in the source permission set, it's a new
+      # permission we need to create
+      if !permissions_existing_by_project.has_key?(this_source_project_oid) then
+        permissions_to_create.push(this_source_permission)
+
+      # We found the OID key, so there is an existing permission for this Project. Is it different
+      # from the target permission?
+      else
+        this_source_role = this_source_permission.Role
+        this_source_project = find_project(this_source_project_oid)
+        this_source_project_name = this_source_project["Name"]
+
+        are_permissions_different = project_permissions_different?(this_source_project, target_user, this_source_role)
+
+        if project_permissions_different?(this_source_project, target_user, this_source_role) then
+          existing_permission = permissions_existing_by_project[this_source_project_oid]
+          this_existing_project = existing_permission.Project
+          this_existing_project_name = this_existing_project.Name
+          this_existing_role = existing_permission.Role
+          @logger.info "Existing Permission: #{this_existing_project_name}: #{this_existing_role}"
+          @logger.info "Updated Permission: #{this_source_project_name}: #{this_source_role}"
+          permissions_to_update.push(this_source_permission)
+        end
+      end
+    end
+
+    # Loop through target permissions list and check for Project Permissions that don't exist
+    # in source permissions template, indicating they need to be removed
+    permissions_existing_by_project.each_pair do | this_existing_project_oid, this_existing_permission |
+      if !source_permissions_by_project.has_key?(this_existing_project_oid) then
+        permissions_to_delete.push(this_existing_permission)
+      end
+    end
+
+    # Process creates
+    number_new_permissions = 0
+    permissions_to_create.each do | this_new_permission |
+      this_project = find_project(this_new_permission.Project.ObjectID.to_s)
+      if !this_project.nil? then
+        this_project_name = this_new_permission.Project.Name
+        this_role = this_new_permission.Role
+        @logger.info "Creating #{this_role} permission on #{this_project_name} from #{source_user_id} to: #{target_user_id}."
+        create_project_permission(target_user, this_project, this_role)
+        number_new_permissions += 1
+      end
+    end
+
+    # Process updates
+    number_updated_permissions = 0
+    permissions_to_update.each do | this_new_permission |
+      this_project = find_project(this_new_permission.Project.ObjectID.to_s)
+      if !this_project.nil? then
+        this_project_name = this_new_permission.Project.Name
+        this_role = this_new_permission.Role
+        @logger.info "Updating #{this_role} permission on #{this_project_name} from #{source_user_id} to: #{target_user_id}."
+        create_project_permission(target_user, this_project, this_role)
+        number_updated_permissions += 1
+      end
+    end
+
+    # Process deletes
+    number_removed_permissions = 0
+    permissions_to_delete.each do | this_deleted_permission |
+      this_project = find_project(this_deleted_permission.Project.ObjectID.to_s)
+      if !this_project.nil? then
+        this_project_name = this_deleted_permission.Project.Name
+        this_role = this_deleted_permission.Role
+        @logger.info "Removing #{this_role} permission to #{this_project_name} from #{target_user_id} since it is not present on source: #{source_user_id}."
+        delete_project_permission(target_user, this_project)
+        number_removed_permissions += 1
+      end
+    end
+
+    @logger.info "#{number_new_permissions} Permissions Created; #{number_updated_permissions} Permissions Updated; #{number_removed_permissions} Permissions Removed."
+
+  end
+
+    # Mirrors team membership set from a source user to a target user
+  def sync_team_memberships(source_user_id, target_user_id)
+    source_user = find_user(source_user_id)
+    target_user = find_user(target_user_id)
+    if source_user.nil? then
+      @logger.warn "  Source user: #{source_user_id} Not found. Skipping sync of permissions to #{target_user_id}."
+      return
+    elsif target_user.nil then
+      @logger.warn "  Target user: #{target_user_id} Not found. Skipping sync of permissions for #{target_user_id}."
+    end
+
+    memberships_existing = target_user["TeamMemberships"]
+    source_memberships = source_user["TeamMemberships"]
+
+    # build membership lists by Project ObjectID
+    source_membership_oids = []
+    source_memberships.each do | this_source_membership |
+      source_membership_oids.push(get_membership_oid_from_membership(this_source_membership))
+    end
+
+    memberships_existing_oids = []
+    memberships_existing.each do | this_membership |
+      memberships_existing_oids.push(get_membership_oid_from_membership(this_membership))
+    end
+
+    # build Target User Permissions list by Project ObjectID
+    # Needed to make sure that user to whom we're trying to set team membership for
+    # is an editor
+    permissions_existing = target_user.UserPermissions
+    permissions_existing_by_project = {}
+    permissions_existing.each do | this_permission |
+      if this_permission._type == "ProjectPermission" then
+        permissions_existing_by_project[this_permission.Project.ObjectID.to_s] = this_permission
+      end
+    end
+
+    memberships_to_add = []
+    source_membership_oids.each do | this_membership_oid |
+      if !memberships_existing_oids.include?(this_membership_oid) then
+        memberships_to_add.push(this_membership_oid)
+      end
+    end
+
+    memberships_to_remove = []
+    memberships_existing_oids.each do | this_membership_oid |
+      if !source_membership_oids.include?(this_membership_oid) then
+        memberships_to_remove.push(this_membership_oid)
+      end
+    end
+
+    number_memberships_added = 0
+    memberships_to_add.each do | this_membership_oid |
+
+      this_permission = permissions_existing_by_project[this_membership_oid]
+      if !this_permission.nil? then
+        this_role = this_permission.Role
+        if !this_role.eql?(EDITOR) then
+          @logger.warn "  Target User: #{target_user_id} must be an Editor to make them a Team Member. Skipping."
+          return
+        end
+
+        this_project = find_project(this_membership_oid)
+        if !this_project.nil? then
+          number_memberships_added += 1
+          this_project_name = this_project["Name"]
+          @logger.info "Updating TeamMembership on #{this_project_name} from #{source_user_id} to: #{target_user_id}."
+          update_team_membership(target_user, this_membership_oid, this_project_name, TEAMMEMBER_YES)
+        end
+      end
+
+    end
+
+    number_memberships_removed = 0
+    memberships_to_remove.each do | this_membership_oid |
+      this_project = find_project(this_membership_oid)
+      if !this_project.nil? then
+        number_memberships_removed += 1
+        this_project_name = this_project["Name"]
+        @logger.info "Removing TeamMembership on #{this_project_name} from #{target_user_id} since source: #{source_user_id} is not a TeamMember."
+        update_team_membership(target_user, this_membership_oid, this_project_name, TEAMMEMBER_NO)
+      end
+    end
+
+    @logger.info "Team Memberships Added: #{number_memberships_added}; Team Memberships Removed: #{number_memberships_removed}"
+
+  end
+
   def update_workspace_permissions(workspace, user, permission, new_user)
-    if new_user or workspace_permissions_updated?(workspace, user, permission)
+    if new_user or workspace_permissions_different?(workspace, user, permission)
       update_permission_workspacelevel(workspace, user, permission)
     else
       @logger.info "  #{user.UserName} #{workspace.Name} - No permission updates"
@@ -700,7 +925,7 @@ class UserHelper
   end
 
   def update_project_permissions(project, user, permission, new_user)
-    if new_user or project_permissions_updated?(project, user, permission)
+    if new_user or project_permissions_different?(project, user, permission)
       update_permission_projectlevel(project, user, permission)
     else
       @logger.info "  #{user.UserName} #{project.Name} - No permission updates"
@@ -773,6 +998,39 @@ class UserHelper
     end
   end
 
+  def get_membership_oid_from_membership(team_membership)
+    this_membership_ref = team_membership._ref
+    this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
+    return this_membership_oid
+  end
+
+  def is_team_member(project_oid, user)
+
+    # Default values
+    is_member = false
+    return_value = "No"
+
+    team_memberships = user["TeamMemberships"]
+
+    # First check if team_memberships are nil then loop through and look for a match on
+    # Project OID
+    if team_memberships != nil then
+
+      team_memberships.each do |this_membership|
+
+        # Grab the Project OID off of the ref URL
+        this_membership_oid = get_membership_oid_from_membership(this_membership)
+
+        if this_membership_oid == project_oid then
+          is_member = true
+        end
+      end
+    end
+
+    if is_member then return_value = "Yes" end
+    return return_value
+end
+
   # Updates team membership. Note - this utilizes un-documented and un-supported Rally endpoint
   # that is not part of WSAPI REST
   # it also digs down into rally_api to directly PUT against this endpoint
@@ -785,25 +1043,12 @@ class UserHelper
     this_user_oid = user["ObjectID"]
 
     # Default for whether user is member or not
-    is_member = false
-
-    # loop through team memberships to see if User is already a member
-    if these_team_memberships != nil then
-      these_team_memberships.each do |this_membership|
-
-        this_membership_ref = this_membership._ref
-        this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
-
-        if this_membership_oid == project_oid then
-          is_member = true
-        end
-      end
-    end
+    is_member = is_team_member(project_oid, user)
 
     url_base = make_team_member_url(this_user_oid, project_oid)
 
     # if User isn't a team member and update value is Yes then make them one
-    if is_member == false && team_member_setting.downcase == TEAMMEMBER_YES.downcase then
+    if is_member == "No" && team_member_setting.downcase == TEAMMEMBER_YES.downcase then
 
       # Construct payload object
       my_payload = {}
@@ -820,7 +1065,7 @@ class UserHelper
       @logger.info "  #{user.UserName} #{project_name} - Team Membership set to #{team_member_setting}"
 
       # if User is a team member and update value is No then remove them from team
-    elsif is_member == true && team_member_setting.downcase == TEAMMEMBER_NO.downcase then
+    elsif is_member == "Yes" && team_member_setting.downcase == TEAMMEMBER_NO.downcase then
 
       # Construct payload object
       my_payload = {}
@@ -899,7 +1144,7 @@ class UserHelper
   # check if the new permissions are different than what the user currently has
   # if we don't do this, we will delete and recreate permissions each time and that
   # will make the revision history on user really, really, really, really ugly
-  def project_permissions_updated?(project, user, new_permission)
+  def project_permissions_different?(project, user, new_permission)
 
     # set default return value
     project_permission_changed = false
@@ -920,9 +1165,10 @@ class UserHelper
         user_permissions = this_user.UserPermissions
 
         user_permissions.each do |this_permission|
+
           if this_permission._type == "ProjectPermission" then
             # user has existing permissions in this project - let's compare new role against existing
-            if this_permission.Project.ObjectID == project["ObjectID"] then
+            if this_permission.Project.ObjectID.to_s == project["ObjectID"].to_s then
               number_matching_projects += 1
               if this_permission.Role != new_permission then
                 project_permission_changed = true
@@ -932,7 +1178,9 @@ class UserHelper
         end
 
         # This is a new project permission - set the changed bit to true
-        if number_matching_projects == 0 then project_permission_changed = true end
+        if number_matching_projects == 0 then
+          project_permission_changed = true
+        end
 
       else # User isn't in user cache - this is a new user with all new permissions - set changed bit to true
         project_permission_changed = true
@@ -971,7 +1219,7 @@ class UserHelper
   # if we don't do this, we will delete and recreate permissions each time and that
   # will make the revision history on user really, really, really, really ugly
 
-  def workspace_permissions_updated?(workspace, user, new_permission)
+  def workspace_permissions_different?(workspace, user, new_permission)
 
     # set default return value
     workspace_permission_changed = false
@@ -990,7 +1238,7 @@ class UserHelper
         user_permissions = this_user.UserPermissions
         user_permissions.each do | this_permission |
           if this_permission._type == "WorkspacePermission" then
-            if this_permission.Workspace.ObjectID == workspace["ObjectID"] then
+            if this_permission.Workspace.ObjectID.to_s == workspace["ObjectID"].to_s then
               number_matching_workspaces += 1
               if this_permission.Role != new_permission then workspace_permission_changed = true end
             end
@@ -1064,11 +1312,11 @@ class UserHelper
     query_results.each do |this_workspace_permission|
 
       this_workspace = this_workspace_permission.Workspace
-      this_workspace_oid = this_workspace["ObjectID"]
+      this_workspace_oid = this_workspace["ObjectID"].to_s
 
       if this_workspace_permission != nil && this_workspace_oid == workspace["ObjectID"]
         begin
-          this_workspace_permission.delete
+          @rally.delete(this_workspace_permission["_ref"])
         rescue Exception => ex
           this_user = this_workspace_permission.User
           this_user_name = this_user.Name
@@ -1095,11 +1343,11 @@ class UserHelper
     query_results.each do |this_project_permission|
 
       this_project = this_project_permission.Project
-      this_project_oid = this_project.ObjectID
+      this_project_oid = this_project.ObjectID.to_s
 
       if this_project_permission != nil && this_project_oid == project["ObjectID"]
         begin
-          this_project_permission.delete
+          @rally.delete(this_project_permission["_ref"])
         rescue Exception => ex
           this_user = this_project_permission.User
           this_user_name = this_user.Name
