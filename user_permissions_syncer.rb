@@ -24,7 +24,7 @@
 # Expected input files are defined as global variables below
 
 # Delimited list of user permissions:
-# $permissions_filename    = 'user_permissions_loader.txt'
+# $user_synclist_filename    = 'user_sync_list.txt'
 
 require 'rally_api'
 require 'csv'
