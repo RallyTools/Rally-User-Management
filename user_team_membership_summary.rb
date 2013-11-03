@@ -26,14 +26,14 @@ util_name = "user_team_membership_summary"
 require 'rally_api'
 require 'csv'
 
-$my_username		        = 'user@company.com'
-$my_password		        = 'password'
-$my_base_url		        = "https://rally1.rallydev.com/slm"
+$my_username            = 'user@company.com'
+$my_password            = 'password'
+$my_base_url            = "https://rally1.rallydev.com/slm"
 
-$my_page_size		        = 50
-$my_fetch		            = "true"
-$my_workspace		        = "My Workspace"
-$my_project		            = "My Project"
+$my_page_size           = 50
+$my_fetch               = "true"
+$my_workspace           = "My Workspace"
+$my_project             = "My Project"
 
 $my_output_file             = "user_team_membership_summary.txt"
 
@@ -97,7 +97,7 @@ results.each do |this_User|
     number_team_memberships = this_User.TeamMemberships != nil ? this_User.TeamMemberships.length : 0
 
     if number_team_memberships > 0
-	    ct = 0
+      ct = 0
         this_User.TeamMemberships.each do |this_Team|
           # Print user info...
 
@@ -107,8 +107,8 @@ results.each do |this_User|
           output_record << this_Team.Name
 
           summary_csv << output_record
-	        ct = ct + 1
-	      end
+          ct = ct + 1
+        end
     else
       output_record = []
       output_record << this_User.UserName
