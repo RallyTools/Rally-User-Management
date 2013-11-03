@@ -1,5 +1,5 @@
 $my_username                = 'user@company.com'
-$my_password                = 'topsecret'
+$my_password                = 'password'
 $my_base_url                = 'https://rally1.rallydev.com/slm'
 
 #API Version
@@ -84,3 +84,18 @@ $summary_mode               = :standard
 # $summarize_enabled_only = true
 # $summarize_enabled_only = false
 $summarize_enabled_only     = true
+
+# Parameter:
+# $sync_team_memberships
+#
+# Scripts Using this Parameter:
+# user_permissions_syncer.rb
+#
+# Description:
+# Synchronizes team memberships between source and target users, in addition
+# to user permissions, when true
+#
+# Valid Settings:
+# $sync_team_memberships = true
+# $sync_team_memberships = false
+$sync_team_memberships              = true
