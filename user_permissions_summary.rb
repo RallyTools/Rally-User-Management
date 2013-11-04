@@ -207,6 +207,8 @@ begin
           object_id = workspace_project_obj["ObjectID"]
         else
           workspace_project_obj = this_permission["Project"]
+          workspace_obj = workspace_project_obj["Workspace"]
+          workspace_name = workspace_obj["Name"]
 
           # Don't summarize permissions for closed Projects
           project_state = workspace_project_obj["State"]
