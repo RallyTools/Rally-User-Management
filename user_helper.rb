@@ -920,7 +920,7 @@ class UserHelper
     if new_user or workspace_permissions_different?(workspace, user, permission)
       update_permission_workspacelevel(workspace, user, permission)
     else
-      @logger.info "  #{user.UserName} #{workspace.Name} - No permission updates"
+      @logger.info "  #{user["UserName"]} #{workspace["Name"]} - No permission updates"
     end
   end
 
@@ -928,7 +928,7 @@ class UserHelper
     if new_user or project_permissions_different?(project, user, permission)
       update_permission_projectlevel(project, user, permission)
     else
-      @logger.info "  #{user.UserName} #{project.Name} - No permission updates"
+      @logger.info "  #{user["UserName"]} #{project["Name"]} - No permission updates"
     end
   end
 
@@ -977,9 +977,9 @@ class UserHelper
         updated_user = @rally.update(:user, user._ref, fields) #by ref
       end
 
-      @logger.info "#{user.UserName} disabled in Rally"
+      @logger.info "#{user["UserName"]} disabled in Rally"
     else
-      @logger.info "#{user.UserName} already disabled from Rally"
+      @logger.info "#{user["UserName"]} already disabled from Rally"
       return false
     end
     return true
@@ -990,10 +990,10 @@ class UserHelper
       fields = {}
       fields["Disabled"] = 'True'
       updated_user = @rally.update(:user, user._ref, fields) if @create_flag
-      @logger.info "#{user.UserName} enabled in Rally"
+      @logger.info "#{user["UserName"]} enabled in Rally"
       return true
     else
-      @logger.info "#{user.UserName} already enabled in Rally"
+      @logger.info "#{user["UserName"]} already enabled in Rally"
       return false
     end
   end
@@ -1062,7 +1062,7 @@ end
       # @rally_json_connection does a to_json on object to convert
       # payload object to JSON: {"projectuser":{"TeamMember":"true"}}
       response = @rally_json_connection.send_request(url_base, args)
-      @logger.info "  #{user.UserName} #{project_name} - Team Membership set to #{team_member_setting}"
+      @logger.info "  #{user["UserName"]} #{project_name} - Team Membership set to #{team_member_setting}"
 
       # if User is a team member and update value is No then remove them from team
     elsif is_member == "Yes" && team_member_setting.downcase == TEAMMEMBER_NO.downcase then
@@ -1078,9 +1078,9 @@ end
 
       # @rally_json_connection will convert payload object to JSON: {"projectuser":{"TeamMember":"false"}}
       response = @rally_json_connection.send_request(url_base, args)
-      @logger.info "  #{user.UserName} #{project_name} - Team Membership set to #{team_member_setting}"
+      @logger.info "  #{user["UserName"]} #{project_name} - Team Membership set to #{team_member_setting}"
     else
-      @logger.info "  #{user.UserName} #{project_name} - No creation of or changes to Team Membership"
+      @logger.info "  #{user["UserName"]} #{project_name} - No creation of or changes to Team Membership"
     end
   end
 
@@ -1309,7 +1309,7 @@ end
 
     query_results = @rally.find(workspace_permission_query)
 
-    query_results.each do |this_workspace_permission|
+    query_results.each do | this_workspace_permission |
 
       this_workspace = this_workspace_permission.Workspace
       this_workspace_oid = this_workspace["ObjectID"].to_s
