@@ -239,7 +239,7 @@ class UserHelper
 
         # Cache it for use next time
         @cached_workspaces[workspace["ObjectID"]] = workspace
-        @logger.info "Caching Workspace: #{workspace.Name}"
+        @logger.info "Caching Workspace: #{workspace['Name']}"
 
         # Return workspace object
         return workspace
@@ -270,7 +270,7 @@ class UserHelper
 
         # Cache it for use next time
         @cached_projects[project["ObjectID"]] = project
-        @logger.info "Caching Project: #{project.Name}"
+        @logger.info "Caching Project: #{project['Name']}"
 
         # Return it
         return project
@@ -695,9 +695,9 @@ class UserHelper
         @workspace_hash_of_projects[this_workspace_oid_string] = open_projects
 
         if this_workspace.State != "Closed" && open_projects != nil then
-          @logger.info "Caching Workspace:  #{this_workspace.Name}."
+          @logger.info "Caching Workspace:  #{this_workspace['Name']}."
           @cached_workspaces[this_workspace_oid_string] = this_workspace
-          @logger.info "Workspace: #{this_workspace.Name} has: #{open_projects.length} open projects."
+          @logger.info "Workspace: #{this_workspace['Name']} has: #{open_projects.length} open projects."
 
           # Loop through open projects and Cache
           open_projects.each do | this_project |
@@ -705,7 +705,7 @@ class UserHelper
             @cached_projects[this_project.ObjectID.to_s] = this_project
           end
         else
-            @logger.warn "Workspace:  #{this_workspace.Name} is closed or has no open projects. Not added to cache."
+            @logger.warn "Workspace:  #{this_workspace['Name']} is closed or has no open projects. Not added to cache."
         end
       end
     end
@@ -769,7 +769,7 @@ class UserHelper
         if project_permissions_different?(this_source_project, target_user, this_source_role) then
           existing_permission = permissions_existing_by_project[this_source_project_oid]
           this_existing_project = existing_permission.Project
-          this_existing_project_name = this_existing_project.Name
+          this_existing_project_name = this_existing_project["Name"]
           this_existing_role = existing_permission.Role
           @logger.info "Existing Permission: #{this_existing_project_name}: #{this_existing_role}"
           @logger.info "Updated Permission: #{this_source_project_name}: #{this_source_role}"
