@@ -291,7 +291,7 @@ def process_template(header, row)
               object_id_string = object_id.to_s
 
               # Determine if user is a team member on this project
-              these_team_memberships = this_user["TeamMemberships"]
+              these_team_memberships = permission_source_user["TeamMemberships"]
               team_member = is_team_member(object_id_string, these_team_memberships)
 
               # Grab workspace or project name from permission name
