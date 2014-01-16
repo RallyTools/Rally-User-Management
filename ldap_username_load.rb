@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 
 rally_url              = "https://10.32.10.120/slm"
@@ -77,10 +78,11 @@ begin
   #==================== Making a connection to Rally ====================
 
   #Setting custom headers
+  @user_mgmt_version      = UserManagementVersion.new()
   $headers = RallyAPI::CustomHttpHeader.new()
   $headers.name           = "Ruby User Management Tool 2::Ruby LDAP User Load Script"
   $headers.vendor         = "Rally Labs"
-  $headers.version        = "0.50"
+  $headers.version        = @user_mgmt_version.revision()
 
   config                  = {:base_url => rally_url}
   config[:username]       = rally_user

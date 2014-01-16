@@ -22,6 +22,7 @@
 # Usage to disable: ruby enable_or_disable_users.rb disable
 
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 
 $my_base_url                   = "https://rally1.rallydev.com/slm"
@@ -107,10 +108,11 @@ begin
   #==================== Making a connection to Rally ====================
 
   #Setting custom headers
+  @user_mgmt_version      = UserManagementVersion.new()
   $headers                = RallyAPI::CustomHttpHeader.new()
   $headers.name           = "Ruby User Management Tool 2::User Enabler-Disabler"
   $headers.vendor         = "Rally Labs"
-  $headers.version        = "0.50"
+  $headers.version        = user_mgmt_version.revision()
 
   config                  = {:base_url => $my_base_url}
   config[:username]       = $my_username

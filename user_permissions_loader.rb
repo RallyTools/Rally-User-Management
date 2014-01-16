@@ -27,6 +27,7 @@
 # $permissions_filename    = 'user_permissions_loader.txt'
 
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 require 'logger'
 require './multi_io.rb'
@@ -62,10 +63,11 @@ $my_delim                           = "\t"
 $enable_cache                       = true
 
 #Setting custom headers
+@user_mgmt_version                  = UserManagementVersion.new()
 $headers                            = RallyAPI::CustomHttpHeader.new()
 $headers.name                       = "Ruby User Management Tool 2::User Permissions Loader"
 $headers.vendor                     = "Rally Labs"
-$headers.version                    = "0.50"
+$headers.version                    = @user_mgmt_version.revision()
 
 #API Version
 $wsapi_version                      = "1.43"
@@ -118,7 +120,8 @@ def update_permission(header, row)
     required_field_isnil = true
     required_nil_fields += "UserName"
   else
-    username = username_field.strip
+    # Downcase - Rally's WSAPI lookup finds user based on lower-case UserID
+    username = username_field.strip.downcase
   end
   if permission_type_field.nil? then
     required_field_isnil = true
