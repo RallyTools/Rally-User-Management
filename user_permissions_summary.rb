@@ -20,13 +20,15 @@
 
 #include for rally json library gem
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 
 #Setting custom headers
+@user_mgmt_version      = UserManagementVersion.new()
 $headers = RallyAPI::CustomHttpHeader.new()
 $headers.name           = "Ruby User Management Tool 2::User Permissions Loader::User Permissions Summary Report"
 $headers.vendor         = "Rally Labs"
-$headers.version        = "0.50"
+$headers.version        = @user_mgmt_version.revision()
 
 #API Version
 $wsapi_version          = "1.43"
