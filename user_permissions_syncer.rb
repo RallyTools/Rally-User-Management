@@ -27,6 +27,7 @@
 # $user_synclist_filename    = 'user_sync_list.txt'
 
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 require 'logger'
 require './multi_io.rb'
@@ -62,10 +63,11 @@ $my_delim                           = ","
 $enable_cache                       = true
 
 #Setting custom headers
+@user_mgmt_version                  = UserManagementVersion.new()
 $headers                            = RallyAPI::CustomHttpHeader.new()
 $headers.name                       = "Ruby User Management Tool 2::User Permissions Syncer"
 $headers.vendor                     = "Rally Labs"
-$headers.version                    = "0.50"
+$headers.version                    = @user_mgmt_version.revision()
 
 #API Version
 $wsapi_version                      = "1.43"
