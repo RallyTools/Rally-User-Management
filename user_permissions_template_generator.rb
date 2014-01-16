@@ -20,6 +20,7 @@
 
 #include for rally json library gem
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 require 'set'
 require 'logger'
@@ -27,10 +28,11 @@ require './user_helper.rb'
 require './multi_io.rb'
 
 #Setting custom headers
+@user_mgmt_version              = UserManagementVersion.new()
 $headers                        = RallyAPI::CustomHttpHeader.new()
 $headers.name                   = "Ruby User Management Tool 2::Ruby User Permissions Template Generator"
 $headers.vendor                 = "Rally Labs"
-$headers.version                = "0.50"
+$headers.version                = @user_mgmt_version.revision()
 
 #API Version
 $wsapi_version                   = "1.43"
@@ -129,7 +131,6 @@ def prep_record_for_export(input_record, type, input_user, permission, is_teamme
 
 end
 
-
 def strip_role_from_permission(str)
     # Removes the role from the Workspace,ProjectPermission String so we're left with just the
     # Workspace/Project Name
@@ -181,11 +182,50 @@ def process_template(header, row)
 
   # Assemble User data from input file
   this_user = {}
-  this_user["UserName"]           = row[header[0]].strip
-  this_user["LastName"]           = row[header[1]].strip
-  this_user["FirstName"]          = row[header[2]].strip
-  this_user["DisplayName"]        = row[header[3]].strip
-  this_user["DefaultPermissions"] = row[header[4]].strip
+  this_username_field           = row[header[0]]
+  this_lastname_field           = row[header[1]]
+  this_firstname_field          = row[header[2]]
+  this_displayname_field        = row[header[3]]
+  this_defaultpermissions_field = row[header[4]]
+
+  # Check to see if any input fields are nil
+  required_field_isnil = false
+  required_nil_fields = ""
+
+  if this_username_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += "UserName"
+  else
+    target_username = this_username_field.strip
+  end
+
+  if this_defaultpermissions_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " DefaultPermissions"
+  else
+    target_defaultpermissions = this_defaultpermissions_field.strip
+  end
+
+  if required_field_isnil then
+    @logger.warn "One or more required fields: "
+    @logger.warn required_nil_fields
+    @logger.warn "Is missing! Skipping this row..."
+    return
+  end
+
+  # Assemble User data from input file
+  this_user = {}
+  this_user["UserName"]           = target_username
+  this_user["DefaultPermissions"] = target_defaultpermissions
+  if !this_lastname_field.nil? then
+    this_user["LastName"]         = this_lastname_field.strip
+  end
+  if !this_firstname_field.nil? then
+    this_user["FirstName"]        = this_firstname_field.strip
+  end
+  if !this_displayname_field.nil? then
+    this_user["DisplayName"]      = this_displayname_field.strip
+  end
 
   # Check for "type" of DefaultPermissions
   # if field value contains '@' we know that we are copying Default Permissions from
