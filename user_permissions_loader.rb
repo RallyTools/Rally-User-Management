@@ -120,7 +120,8 @@ def update_permission(header, row)
     required_field_isnil = true
     required_nil_fields += "UserName"
   else
-    username = username_field.strip
+    # Downcase - Rally's WSAPI lookup finds user based on lower-case UserID
+    username = username_field.strip.downcase
   end
   if permission_type_field.nil? then
     required_field_isnil = true
