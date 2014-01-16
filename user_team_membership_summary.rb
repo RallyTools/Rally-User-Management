@@ -24,6 +24,7 @@ util_name = "user_team_membership_summary"
 ########################################################################
 
 require 'rally_api'
+require './user_mgmt_version'
 require 'csv'
 
 $my_username            = 'user@company.com'
@@ -43,10 +44,11 @@ $my_delim = "\t"
 $output_fields              =  %w{UserID MembershipNumber TeamName}
 
 #Setting custom headers
+@user_mgmt_version          = UserManagementVersion.new()
 $headers                    = RallyAPI::CustomHttpHeader.new()
 $headers.name               = "Ruby User Management Tool 2::Ruby Team Membership Summary Report"
 $headers.vendor             = "Rally Labs"
-$headers.version            = "0.50"
+$headers.version            = @user_mgmt_version.revision()
 
 #API Version
 $wsapi_version              = "1.43"
