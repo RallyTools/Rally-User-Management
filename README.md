@@ -3,7 +3,7 @@ Rally-User-Management
 
 ## License
 
-Copyright (c) Rally Software Development Corp. 2013 Distributed under the MIT License.
+Copyright (c) Rally Software Development Corp. 2014 Distributed under the MIT License.
 
 ## Warranty
 
@@ -48,12 +48,17 @@ The contents of this Github repository include:
 - ldap_username_load_template.csv               - Template file contain list of Username and OnpremLdapUsername values.
 - my_vars.rb                                    - User configurable variables
 - new_user_list_template.txt                    - START HERE! This is the list of users/attributes you want to create
+- simple_user_loader.rb                         - A simplified user loader that creates users directly.
+- simple_user_loader_template.txt               - Template file for users, permissions, and attributes used as input to the simple_user_loader.rb script.
+- update_user_attributes.rb                     - A script to bulk update standard and extended User Attributes such as Department, CostCenter, Default Workspace/Project, TimeZone.
+- update_user_attributes_template.txt           - Template file for user attribute updates, used as input to the update_user_attributes.rb script
 - user_helper.rb                                - Helper class with many utility functions
 - user_permissions_loader.rb                    - Script to upload users and permissions
 - user_permissions_loader_template.txt          - Template file showing what an upload file should look like
 - user_permissions_summary.rb                   - Script to output summary of user permissions AND Team Membership for all users
 - user_permissions_syncer.rb                   - Script to synchronize permissions and team memberships from a list of existing users in Rally to a list of target users needing updated permissions.
 - user_permissions_template_generator.rb        - Script to generate template of WorkspacePermissions and ProjectPermissions for all users in the new_user_list file
+- user_sync_template.txt                        - Template/example file for input to user_permissions_syncer.rb
 - user_team_membership_summary.rb               - Script that summarizes just team membership(s) for all users
 - user_sync_template.txt - Template/example file for input to user_permissions_syncer.rb
 - README.docx                                   - User guide Word document

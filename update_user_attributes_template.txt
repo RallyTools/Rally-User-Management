@@ -1,0 +1,4 @@
+UserID	LastName	FirstName	DisplayName	Role	OfficeLocation	Department	CostCenter	Phone	NetworkID	DefaultWorkspaceName	DefaultProjectName	TimeZone
+user5@company.com	Five	User	User Five	Scrum Master	Boulder	Operations	Operations	303-555-1212	fred	Mark W Workspace	Avalanche Hazard Mapping	America/Denver
+user6@company.com	Six	User	User Six	Developer	Boulder	Operations	Operations	303-555-1414	wilma	Mark W Workspace	Avalanche Hazard Mapping	Default
+user7@company.com	Seven	User	User Seven	DevOps	Kirkland	Horizon3 Initiatives	R&D	425-555-1414	betty	Curmudgeon	Deep Space	America/Los_Angeles
