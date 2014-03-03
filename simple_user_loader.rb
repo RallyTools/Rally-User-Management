@@ -344,7 +344,6 @@ def create_user(header, row)
               if workspace_count > $max_workspaces && $test_mode then
                 @logger.info "  TEST MODE: Breaking workspaces at maximum of #{$max_workspaces}."
                 break
-                return
               end
 
               workspace_name = strip_role_from_permission(this_permission.Name)
