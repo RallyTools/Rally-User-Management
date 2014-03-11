@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Rally Software Development
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -82,17 +82,30 @@ $user_create_delay                  = 0 # seconds buffer time after creating use
 # automatic refresh
 $max_cache_age                      = 1
 
+# upgrade_only_mode - when running in upgrade_only_mode, check existing permissions
+# first, and only apply the change if it represents an upgrade over existing permissions
+$upgrade_only_mode                  = false
+
+# Maximum parameters for Workspaces/Projects/User Updates to process
+$max_workspaces                     = 100000
+$max_projects                       = 100000
+$max_user_updates                   = 100000
+
+# Limited load mode for testing - triggers circuit-breaker if true
+$test_mode                          = false
+
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
 
 #Setup Role constants
-$ADMIN = 'Admin'
-$USER = 'User'
-$EDITOR = 'Editor'
-$VIEWER = 'Viewer'
-$NOACCESS = 'No Access'
+$ADMIN          = 'Admin'
+$USER           = 'User'
+$PROJECTADMIN   = "Admin"
+$EDITOR         = 'Editor'
+$VIEWER         = 'Viewer'
+$NOACCESS       = 'No Access'
 $TEAMMEMBER_YES = 'Yes'
-$TEAMMEMBER_NO = 'No'
+$TEAMMEMBER_NO  = 'No'
 
 #Setup constants
 $workspace_permission_type          = "WorkspacePermission"
@@ -161,23 +174,22 @@ def update_permission(header, row)
     return
   end
 
+  user_fields = {}
+
   # Filter for possible nil values in optional fields
   if !last_name_field.nil? then
     last_name = last_name_field.strip
-  else
-    last_name = "N/A"
+    user_fields["LastName"] = last_name
   end
 
   if !first_name_field.nil? then
     first_name = first_name_field.strip
-  else
-    first_name = "N/A"
+    user_fields["FirstName"] = first_name
   end
 
   if !display_name_field.nil? then
     display_name = display_name_field.strip
-  else
-    display_name = "N/A"
+    user_fields["DisplayName"] = display_name
   end
 
   if !workspace_project_name_field.nil? then
@@ -189,19 +201,23 @@ def update_permission(header, row)
   # look up user
   user = @uh.find_user(username)
 
-  #create user if they do not exist
-  #Warning: if you opt to allow new user creation as part of the script:
-  #New users are created with one default WorkspacePermission and one default ProjectPermission, as follows:
-  #WorkspacePermission: User, First Workspace alphabetically
-  #ProjectPermission: No Access, First Project within above workspace, alphabetically
-  #This behavior is necessary because a user must have at least one Workspace,Project permission pairing
-  #The above grants provide no write-able access, but, will result in a "creation" artifact within the new user's
-  #permission set
+  # Check user-level update circuit breaker
+  if username.eql?($prev_user)
+    $user_update_count += 1
+    if $test_mode && $user_update_count > $max_user_updates then
+      @logger.info "  TEST MODE: Breaking user updates at maximum of #{$max_user_updates}."
+      return
+    end
+  else
+    # New user, start counter over
+    $user_update_count = 0
+  end
 
+  #create user if they do not exist
   if user == nil
     @logger.info "User #{username} does not yet exist. Creating..."
     begin
-        user = @uh.create_user(username, display_name, first_name, last_name)
+        user = @uh.create_user(username, user_fields)
         sleep $user_create_delay
         new_user = true
     rescue => ex
@@ -214,6 +230,7 @@ def update_permission(header, row)
 
   # Update Workspace Permission if row type is WorkspacePermission
   if permission_type == "WorkspacePermission"
+
     workspace = @uh.find_workspace(object_id)
     if workspace != nil then
       @uh.update_workspace_permissions(workspace, user, permission_level, new_user)
@@ -226,6 +243,7 @@ def update_permission(header, row)
   # Warning: note this will error out if this is a new ProjectPermission within a
   # Workspace for which there is no existing WorkspacePermission for the user
   if permission_type == "ProjectPermission"
+
     project = @uh.find_project(object_id)
     if project != nil then
       @uh.update_project_permissions(project, user, permission_level, new_user)
@@ -233,15 +251,15 @@ def update_permission(header, row)
       @logger.error "Project #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this project."
     end
 
-    # Update Team Membership (Only applicable for Editor Permissions at Project level)
-    if permission_level == $EDITOR then
+    # Update Team Membership (Only applicable for Editor or Admin Permissions at Project level)
+    if permission_level == $EDITOR || permission_level == $PROJECTADMIN then
       @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
     else
-      @logger.info "  Permission level: #{permission_level}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
+      @logger.info "  Permission level: #{permission_level}, Team Member: #{team_member}. #{$EDITOR} or #{$PROJECTADMIN} Permission needed to be " + \
          "Team Member. No Team Membership update: N/A."
     end
   end
-
+  $prev_user = username
 end
 
 begin
@@ -268,7 +286,7 @@ begin
 
   #Helper Methods
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age)
+  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age, $upgrade_only_mode)
 
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
@@ -301,8 +319,17 @@ begin
 
   header = input.first #ignores first line
 
+  $workspace_count = 0
+  $project_count = 0
+
   rows   = []
   (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
+
+  # Set prev_user to be "N/A"
+  # set $user_update_count = 0
+  # (These params are used for test/circuit-breaking)
+  $prev_user = "N/A"
+  $user_update_count = 0
 
   rows.each do |row|
     update_permission(header, row)
