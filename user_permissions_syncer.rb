@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Rally Software Development
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -86,6 +86,10 @@ $max_cache_age                      = 1
 # user permissions
 $sync_team_memberships              = true
 
+# upgrade_only_mode - when running in upgrade_only_mode, check existing permissions
+# first, and only apply the change if it represents an upgrade over existing permissions
+$upgrade_only_mode                  = false
+
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
 
@@ -167,7 +171,7 @@ begin
 
   #Helper Methods
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age)
+  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age, $upgrade_only_mode)
 
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
