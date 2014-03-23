@@ -41,6 +41,9 @@ $my_headers             = $headers
 $my_page_size           = 200
 $my_limit               = 50000
 
+# Encoding
+$file_encoding          = "US-ASCII"
+
 # Mode options:
 # :standard => Outputs permission attributes only
 # :extended => Outputs enhanced field list including Enabled/Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation
@@ -159,7 +162,7 @@ begin
 
   # Open file for output of summary
   # Output CSV header
-  summary_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
+  summary_csv = CSV.open($my_output_file, "wb", {:col_sep => $my_delim, :encoding => $file_encoding})
   summary_csv << $output_fields
 
   # Run stepwise query of users
