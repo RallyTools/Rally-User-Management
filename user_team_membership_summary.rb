@@ -27,14 +27,14 @@ require 'rally_api'
 require './user_mgmt_version'
 require 'csv'
 
-$my_username            = 'user@company.com'
-$my_password            = 'password'
-$my_base_url            = "https://rally1.rallydev.com/slm"
+$my_username                = 'user@company.com'
+$my_password                = 'password'
+$my_base_url                = "https://rally1.rallydev.com/slm"
 
-$my_page_size           = 50
-$my_fetch               = "true"
-$my_workspace           = "My Workspace"
-$my_project             = "My Project"
+$my_page_size               = 50
+$my_fetch                   = "true"
+$my_workspace               = "My Workspace"
+$my_project                 = "My Project"
 
 $my_output_file             = "user_team_membership_summary.txt"
 
@@ -52,6 +52,9 @@ $headers.version            = @user_mgmt_version.revision()
 
 #API Version
 $wsapi_version              = "1.43"
+
+# Encoding
+$file_encoding              = "US-ASCII"
 
 # Load (and maybe override with) my personal/private variables from a file...
 my_vars= File.dirname(__FILE__) + "/my_vars.rb"
@@ -85,7 +88,7 @@ puts "Found #{number_users} users."
 
 # Start output of summary
 # Output CSV header
-summary_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
+summary_csv = CSV.open($my_output_file, "wb", {:col_sep => $my_delim, :encoding => $file_encoding})
 summary_csv << $output_fields
 
 # loop through all users and output permissions summary
@@ -93,7 +96,7 @@ puts "Summarizing users and writing permission summary output file..."
 
 # Step thru all users
 count = 0
-results.each do |this_User|
+results.each do | this_User |
 
     count = count + 1
     number_team_memberships = this_User.TeamMemberships != nil ? this_User.TeamMemberships.length : 0
