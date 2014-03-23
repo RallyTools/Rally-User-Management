@@ -660,24 +660,7 @@ class UserHelper
         @workspace_hash_of_projects[this_workspace_oid_string] = these_projects
 
         number_processed += 1
-
-        # # Building workspace_hash_of_projects - a mapping of workspace to project ownership
-        # # We're on a new Workspace. Write the current list of Workspace's Projects to
-        # # Workspace/Project Hash, and start new list of projects for new Workspace
-        # if this_workspace_oid_string != current_workspace_oid_string && these_projects.length > 0
-        #   @workspace_hash_of_projects[current_workspace_oid_string] = these_projects
-        #   these_projects = []
-        #   these_projects.push(this_project)
-        #   current_workspace_oid_string = this_workspace_oid_string
-        # else
-        #     these_projects.push(this_project)
-        # end
       end
-
-      # Once we've gone through all the rows, we still need to flush the last
-      # project set to the workspace hash of projects, since the last set
-      # never received a "non-current" workspace oid to trigger writing it
-      #@workspace_hash_of_projects[current_workspace_oid_string] = these_projects
 
     end
     @logger.info "Completed reading project cache from #{project_cache_filename}"
