@@ -60,6 +60,8 @@ class UserHelper
     @cached_subscription = {}
     @cached_workspaces = {}
     @cached_projects = {}
+    @cached_workspaces_by_name = {}
+    @cached_projects_by_name = {}
 
     # Provides lookup of projects per workspace
     @workspace_hash_of_projects = {}
@@ -1471,7 +1473,7 @@ end
     project_permission_upgrade = false
 
     # set a default existing_permission conservatively at Project Admin
-    existing_permission = PROJECTADMIN
+    existing_permission = PROJECTADMIN_READ
     use_cache = false
 
     # first try to lookup against cached user list -- much faster than re-querying Rally
