@@ -148,4 +148,4 @@ $upgrade_only_mode                  = false
 #
 # $file_encoding = 'US-ASCII'
 # $file_encoding = 'UTF-8'
-$file_encoding                      = 'US-ASCII'
+$file_encoding                      = 'UTF-8'
