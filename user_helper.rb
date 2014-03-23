@@ -650,7 +650,7 @@ class UserHelper
         # make sure workspace OID is a string
         this_workspace_oid_string = this_workspace_oid.to_s
 
-        if @workspace_hash_of_projects.has_key?[this_workspace_oid_string] then
+        if @workspace_hash_of_projects.has_key?(this_workspace_oid_string) then
           these_projects = @workspace_hash_of_projects[this_workspace_oid_string]
         else
           these_projects = []
