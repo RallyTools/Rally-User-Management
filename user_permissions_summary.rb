@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Rally Software Development
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,9 @@ $my_password            = "password"
 $my_headers             = $headers
 $my_page_size           = 200
 $my_limit               = 50000
+
+# Encoding
+$file_encoding          = "US-ASCII"
 
 # Mode options:
 # :standard => Outputs permission attributes only
@@ -159,7 +162,7 @@ begin
 
   # Open file for output of summary
   # Output CSV header
-  summary_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
+  summary_csv = CSV.open($my_output_file, "wb", {:col_sep => $my_delim, :encoding => $file_encoding})
   summary_csv << $output_fields
 
   # Run stepwise query of users

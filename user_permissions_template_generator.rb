@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Rally Software Development
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -77,11 +77,14 @@ $TEAMMEMBER_NO = 'No'
 $TEAMMEMBER_NA = 'N/A'
 
 # symbols
-:type_workspace
-:type_project
+# :type_workspace
+# :type_project
 
 # Output file delimiter
-$my_delim = "\t"
+$my_delim                     = "\t"
+
+# Encoding
+$file_encoding                = "US-ASCII"
 
 # Preps output records to write to Permissions Template file
 def prep_record_for_export(input_record, type, input_user, permission, is_teammember)
@@ -137,46 +140,6 @@ def strip_role_from_permission(str)
     str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
 end
 
-def is_team_member(project_oid, team_memberships)
-
-    # Default values
-    is_member = false
-    return_value = "No"
-
-    # First check if team_memberships are nil then loop through and look for a match on
-    # Project OID
-    if team_memberships != nil then
-
-        team_memberships.each do |this_membership|
-            this_membership_ref = this_membership._ref
-
-            # Grab the Project OID off of the ref URL
-            this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
-
-            if this_membership_oid == project_oid then
-                is_member = true
-            end
-        end
-    end
-
-    if is_member then return_value = "Yes" end
-    return return_value
-end
-
-# Checks to see if input record is using:
-# Text string (i.e. Editor, Viewer)
-# Or
-# User (i.e. john.doe@company.com)
-# as source of default permissions
-def check_default_permission_type(value)
-
-    type = :stringsource
-    if !value.match(/@/).nil? then
-        type = :usersource
-    end
-    return type
-end
-
 # Preps input data from New User List
 def process_template(header, row)
 
@@ -230,7 +193,7 @@ def process_template(header, row)
   # Check for "type" of DefaultPermissions
   # if field value contains '@' we know that we are copying Default Permissions from
   # an existing user
-  default_permission_type = check_default_permission_type(this_user["DefaultPermissions"])
+  default_permission_type = @uh.check_default_permission_type(this_user["DefaultPermissions"])
 
   if default_permission_type == :stringsource then
 
@@ -247,7 +210,7 @@ def process_template(header, row)
         # Loop through open Projects, output Permission entries information
 
         # Default the user to be a team member if they are an Editor
-        if default_permission_string.eql?($EDITOR) then
+        if $default_permission_string.eql?($EDITOR) && $default_editors_to_team_members then
             team_membership = $TEAMMEMBER_YES
         else
             team_membership = $TEAMMEMBER_NO
@@ -298,7 +261,6 @@ def process_template(header, row)
           permission_type = this_permission._type
           permission_role = this_permission.Role
 
-
           if permission_type == $type_workspacepermission then
               workspace_name = strip_role_from_permission(this_permission.Name)
               this_workspace = this_permission["Workspace"]
@@ -331,8 +293,7 @@ def process_template(header, row)
               object_id_string = object_id.to_s
 
               # Determine if user is a team member on this project
-              these_team_memberships = permission_source_user["TeamMemberships"]
-              team_member = is_team_member(object_id_string, these_team_memberships)
+              team_member = @uh.is_team_member(object_id_string, permission_source_user)
 
               # Grab workspace or project name from permission name
               workspace_project_name = strip_role_from_permission(this_permission.Name)
@@ -366,7 +327,15 @@ begin
 
   # Instantiate the User Helper
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age)
+  uh_config                       = {}
+  uh_config[:rally_api]           = @rally
+  uh_config[:logger]              = @logger
+  uh_config[:create_flag]         = true
+  uh_config[:max_cache_age]       = $max_cache_age
+  uh_config[:upgrade_only_mode]   = $upgrade_only_mode
+  uh_config[:file_encoding]       = $file_encoding
+
+  @uh = UserHelper.new(uh_config)
 
   @logger.info "Querying Workspace/Projects and caching results..."
   refresh_needed, reason = @uh.cache_refresh_needed()
@@ -388,13 +357,13 @@ begin
 
   # Start output of template
   # Output CSV header
-  $template_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
+  $template_csv = CSV.open($my_output_file, "wb", {:col_sep => $my_delim, :encoding => $file_encoding})
 
   # Write the output CSV header
   $template_csv << $template_output_fields
 
   # Read input CSV for source of User data
-  input  = CSV.read($user_list_filename, {:col_sep => $my_delim })
+  input  = CSV.read($user_list_filename, {:col_sep => $my_delim, :encoding => $file_encoding })
 
   header = input.first #ignores first line
 

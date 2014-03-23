@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Rally Software Development
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,13 +25,17 @@ require 'date'
 class UserHelper
 
   #Setup constants
-  ADMIN = 'Admin'
-  USER = 'User'
-  EDITOR = 'Editor'
-  VIEWER = 'Viewer'
-  NOACCESS = 'No Access'
-  TEAMMEMBER_YES = 'Yes'
-  TEAMMEMBER_NO = 'No'
+  ADMIN                 = 'Admin'
+  USER                  = 'User'
+  # Different READ and CREATE attributes are imposed by WSAPI
+  # Hopefully this is a temporary hack
+  PROJECTADMIN_READ     = ADMIN
+  PROJECTADMIN_CREATE   = 'Project Admin'
+  EDITOR                = 'Editor'
+  VIEWER                = 'Viewer'
+  NOACCESS              = 'No Access'
+  TEAMMEMBER_YES        = 'Yes'
+  TEAMMEMBER_NO         = 'No'
 
   # Parameters for cache files
   SUB_CACHE           = "_cached_subscription.txt"
@@ -45,19 +49,32 @@ class UserHelper
   WORKSPACE_CACHE_FIELDS      =  %w{ObjectID Name State}
   PROJECT_CACHE_FIELDS        =  %w{ObjectID ProjectName State WorkspaceName WorkspaceOID}
 
-  def initialize(rally, logger, create_flag = true, max_cache_age = 1)
-    @rally = rally
-    @rally_json_connection = @rally.rally_connection
-    @logger = logger
-    @create_flag = create_flag
-    @cached_users = {}
-    @cached_sub_id = 0
-    @cached_subscription = {}
-    @cached_workspaces = {}
-    @cached_projects = {}
+  def initialize(config)
+
+    @rally                     = config[:rally_api]
+    @rally_json_connection     = @rally.rally_connection
+    @logger                    = config[:logger]
+    @create_flag               = config[:create_flag]
+    @cached_users              = {}
+    @cached_sub_id             = 0
+    @cached_subscription       = {}
+    @cached_workspaces         = {}
+    @cached_projects           = {}
+    @cached_workspaces_by_name = {}
+    @cached_projects_by_name   = {}
+
     # Provides lookup of projects per workspace
     @workspace_hash_of_projects = {}
-    @max_cache_age = max_cache_age || 1
+
+    # Maximum age in days of the Workspace/Project cache before refresh
+    @max_cache_age = config[:max_cache_age] || 1
+
+    # upgrade_only_mode - when running in upgrade_only_mode, check existing permissions
+    # first, and only apply the change if it represents an upgrade over existing permissions
+    @upgrade_only_mode = config[:upgrade_only_mode] || false
+
+    # File encoding format
+    @file_encoding = config[:file_encoding] || "US-ASCII"
 
     # User filter for ENABLED users only
     # For purposes of speed/efficiency, summarize Enabled Users ONLY
@@ -66,7 +83,7 @@ class UserHelper
 
     # fetch data
     @initial_user_fetch            = "UserName,FirstName,LastName,DisplayName"
-    @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+    @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships,UserProfile"
 
   end
 
@@ -84,6 +101,14 @@ class UserHelper
 
   def get_workspace_project_hash()
     return @workspace_hash_of_projects
+  end
+
+  def get_cached_workspaces_by_nane()
+    return @cached_workspaces_by_name
+  end
+
+  def get_cached_projects_by_name()
+    return @cached_projects_by_name
   end
 
   # Helper methods
@@ -251,6 +276,82 @@ class UserHelper
     end
   end
 
+  def find_workspace_by_name(workspace_name)
+    if @cached_workspaces_by_name.has_key?(workspace_name)
+      # Found workspace in cache, return the cached workspace
+      return @cached_workspaces_by_name[workspace_name]
+    else
+      # workspace not found in cache - go to Rally
+      workspace_query                    = RallyAPI::RallyQuery.new()
+      workspace_query.project            = nil
+      workspace_query.type               = :workspace
+      workspace_query.fetch              = "Name,State,ObjectID"
+      workspace_query.query_string       = "((Name = \"#{workspace_name}\") AND (State = \"Open\"))"
+
+      workspace_results                  = @rally.find(workspace_query)
+
+      if workspace_results.total_result_count != 0 then
+        # Workspace found via Rally query, return it
+        workspace = workspace_results.first()
+
+        # Cache it for use next time
+        @cached_workspaces_by_name[workspace["Name"]] = workspace
+        @logger.info "Caching Workspace: #{workspace['Name']}"
+
+        if workspace_results.total_result_count > 1 then
+          # More than one Workspace matching this name found
+          @logger.warn "More than one Workspace of name: #{workspace_name} found."
+          @logger.warn "Returning only the first instance found!"
+        end
+
+        # Return workspace object
+        return workspace
+      else
+        # Workspace not found in Rally _or_ cache - return Nil
+        @logger.warn "Rally Workspace: #{workspace_name} not found"
+        return nil
+      end
+    end
+  end
+
+  def find_project_by_name(project_name)
+    if @cached_projects_by_name.has_key?(project_name)
+      # Found workspace in cache, return the cached workspace
+      return @cached_projects_by_name[project_name]
+    else
+      # workspace not found in cache - go to Rally
+      project_query                    = RallyAPI::RallyQuery.new()
+      project_query.project            = nil
+      project_query.type               = :workspace
+      project_query.fetch              = "Name,State,ObjectID"
+      project_query.query_string       = "((Name = \"#{project_name}\") AND (State = \"Open\"))"
+
+      project_results                  = @rally.find(project_query)
+
+      if project_results.total_result_count != 0 then
+        # Workspace found via Rally query, return it
+        project = project_results.first()
+
+        # Cache it for use next time
+        @cached_projects_by_name[project["Name"]] = project
+        @logger.info "Caching Project: #{project['Name']}"
+
+        if project_results.total_result_count > 1 then
+          # More than one Project matching this name found
+          @logger.warn "More than one Project of name: #{project_name} found."
+          @logger.warn "Returning only the first instance found!"
+        end
+
+        # Return project object
+        return project
+      else
+        # Project not found in Rally _or_ cache - return Nil
+        @logger.warn "Rally Project: #{project_name} not found"
+        return nil
+      end
+    end
+  end
+
   def find_project(object_id)
     if @cached_projects.has_key?(object_id)
       # Found project in cache, return the cached project
@@ -280,6 +381,22 @@ class UserHelper
         return nil
       end
     end
+  end
+
+  # Check to see if a project is within a particular workspace.
+  def is_project_in_workspace(project, workspace)
+    test_project_oid = project["ObjectID"]
+    this_workspace_oid = workspace["ObjectID"]
+
+    object_id_matches = false
+    these_projects = @workspace_hash_of_projects[this_workspace_oid]
+    these_projects.each do | this_project |
+      this_project_oid = this_project["ObjectID"]
+      if test_project_oid == this_project_oid then
+        object_id_matches = true
+      end
+    end
+    return object_id_matches
   end
 
   # Get current SubID
@@ -411,7 +528,7 @@ class UserHelper
     @logger.info "Started reading subscription cache from #{subscription_cache_filename}"
 
     # Read in Subscription cache items (should be only 1)
-    subscription_cache_input  = CSV.read(subscription_cache_filename, {:col_sep => CACHE_COL_DELIM})
+    subscription_cache_input  = CSV.read(subscription_cache_filename, {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding})
 
     header = subscription_cache_input.first #ignores first line
 
@@ -443,6 +560,12 @@ class UserHelper
     this_workspace["_ref"]     = make_ref_from_oid("workspace", workspace_id)
 
     @cached_workspaces[workspace_id] = this_workspace
+    if !@cached_workspaces_by_name.has_key?(workspace_name) then
+      @cached_workspaces_by_name[workspace_name] = this_workspace
+    else
+      @logger.warn "  Warning caching Workspace by Name: #{workspace_name}. Duplicate name found!"
+      @logger.warn "  Only first instance of this Workspace name will be cached."
+    end
   end
 
   # Read workspace cache
@@ -452,7 +575,7 @@ class UserHelper
     @logger.info "Started reading workspace cache from #{workspace_cache_filename}"
 
     # Read in workspace cache items (should be only 1)
-    workspace_cache_input  = CSV.read(workspace_cache_filename, {:col_sep => CACHE_COL_DELIM})
+    workspace_cache_input  = CSV.read(workspace_cache_filename, {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding})
 
     header = workspace_cache_input.first #ignores first line
 
@@ -490,6 +613,13 @@ class UserHelper
     this_project["Workspace"]    = this_workspace
     @cached_projects[project_id] = this_project
 
+    if !@cached_projects_by_name.has_key?(project_name) then
+      @cached_projects_by_name[project_name] = this_project
+    else
+      @logger.warn "  Warning caching Project by Name: #{project_name}. Duplicate name found!"
+      @logger.warn "  Only first instance of this Project name will be cached."
+    end
+
     return this_project, project_workspace_oid
 
   end
@@ -501,7 +631,7 @@ class UserHelper
     @logger.info "Started reading project cache from #{project_cache_filename}"
 
     # Read in project cache items (should be only 1)
-    project_cache_input  = CSV.read(project_cache_filename, {:col_sep => CACHE_COL_DELIM})
+    project_cache_input  = CSV.read(project_cache_filename, {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding})
 
     header = project_cache_input.first #ignores first line
 
@@ -520,24 +650,17 @@ class UserHelper
         # make sure workspace OID is a string
         this_workspace_oid_string = this_workspace_oid.to_s
 
-        # Building workspace_hash_of_projects - a mapping of workspace to project ownership
-        # We're on a new Workspace. Write the current list of Workspace's Projects to
-        # Workspace/Project Hash, and start new list of projects for new Workspace
-        if this_workspace_oid_string != current_workspace_oid_string && these_projects.length > 0
-          @workspace_hash_of_projects[current_workspace_oid_string] = these_projects
-          these_projects = []
-          these_projects.push(this_project)
-          current_workspace_oid_string = this_workspace_oid_string
+        if @workspace_hash_of_projects.has_key?(this_workspace_oid_string) then
+          these_projects = @workspace_hash_of_projects[this_workspace_oid_string]
         else
-            these_projects.push(this_project)
+          these_projects = []
         end
+
+        these_projects.push(this_project)
+        @workspace_hash_of_projects[this_workspace_oid_string] = these_projects
+
         number_processed += 1
       end
-
-      # Once we've gone through all the rows, we still need to flush the last
-      # project set to the workspace hash of projects, since the last set
-      # never received a "non-current" workspace oid to trigger writing it
-      @workspace_hash_of_projects[current_workspace_oid_string] = these_projects
 
     end
     @logger.info "Completed reading project cache from #{project_cache_filename}"
@@ -554,7 +677,7 @@ class UserHelper
     subscription_csv = CSV.open(
       subscription_cache_filename,
       CACHE_WRITE_MODE,
-      {:col_sep => CACHE_COL_DELIM}
+      {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding}
     )
     subscription_csv << SUB_CACHE_FIELDS
 
@@ -583,7 +706,7 @@ class UserHelper
     workspace_csv = CSV.open(
       workspace_cache_filename,
       CACHE_WRITE_MODE,
-      {:col_sep => CACHE_COL_DELIM}
+      {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding}
     )
     workspace_csv << WORKSPACE_CACHE_FIELDS
 
@@ -619,7 +742,7 @@ class UserHelper
     project_csv = CSV.open(
       project_cache_filename,
       CACHE_WRITE_MODE,
-      {:col_sep => CACHE_COL_DELIM}
+      {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding}
     )
     project_csv << PROJECT_CACHE_FIELDS
 
@@ -651,9 +774,13 @@ class UserHelper
   end
 
   def read_workspace_project_cache()
+    # Caches by OID
     @cached_subscription = {}
     @cached_workspaces = {}
     @cached_projects = {}
+
+    @cached_workspaces_by_name = {}
+    @cached_projects_by_name = {}
 
     read_subscription_cache()
     read_workspace_cache()
@@ -697,12 +824,27 @@ class UserHelper
         if this_workspace.State != "Closed" && open_projects != nil then
           @logger.info "Caching Workspace:  #{this_workspace['Name']}."
           @cached_workspaces[this_workspace_oid_string] = this_workspace
+
+          if !@cached_workspaces_by_name.has_key?(this_workspace["Name"]) then
+            @cached_workspaces_by_name[this_workspace["Name"]]
+          else
+            @logger.warn "  Warning caching Workspace by Name: #{this_workspace["Name"]}. Duplicate name found!"
+            @logger.warn "  Only first instance of this Workspace name will be cached."
+          end
+
           @logger.info "Workspace: #{this_workspace['Name']} has: #{open_projects.length} open projects."
 
           # Loop through open projects and Cache
           open_projects.each do | this_project |
             this_project["WorkspaceOIDNumeric"] = this_workspace["ObjectID"]
             @cached_projects[this_project.ObjectID.to_s] = this_project
+
+            if !@cached_projects_by_name.has_key?(this_project["Name"]) then
+              @cached_projects_by_name[this_project["Name"]]
+            else
+              @logger.warn "  Warning caching Project by Name: #{this_project["Name"]}. Duplicate name found!"
+              @logger.warn "  Only first instance of this Project name will be cached."
+            end
           end
         else
             @logger.warn "Workspace:  #{this_workspace['Name']} is closed or has no open projects. Not added to cache."
@@ -763,8 +905,6 @@ class UserHelper
         this_source_role = this_source_permission.Role
         this_source_project = find_project(this_source_project_oid)
         this_source_project_name = this_source_project["Name"]
-
-        are_permissions_different = project_permissions_different?(this_source_project, target_user, this_source_role)
 
         if project_permissions_different?(this_source_project, target_user, this_source_role) then
           existing_permission = permissions_existing_by_project[this_source_project_oid]
@@ -885,8 +1025,8 @@ class UserHelper
       this_permission = permissions_existing_by_project[this_membership_oid]
       if !this_permission.nil? then
         this_role = this_permission.Role
-        if !this_role.eql?(EDITOR) then
-          @logger.warn "  Target User: #{target_user_id} must be an Editor to make them a Team Member. Skipping."
+        if !this_role.eql?(EDITOR) && !this_role.eql(PROJECTADMIN) then
+          @logger.warn "  Target User: #{target_user_id} must be an Editor or Project Admin to make them a Team Member. Skipping."
           return
         end
 
@@ -918,29 +1058,54 @@ class UserHelper
 
   def update_workspace_permissions(workspace, user, permission, new_user)
     if new_user or workspace_permissions_different?(workspace, user, permission)
-      update_permission_workspacelevel(workspace, user, permission)
+      if @upgrade_only_mode then
+        is_upgrade, existing_permission = is_workspace_permission_upgrade?(workspace, user, permission)
+        if is_upgrade then
+          update_permission_workspacelevel(workspace, user, permission)
+        else
+          @logger.info "  #{user["UserName"]} #{workspace["Name"]} - upgrade_only_mode == true."
+          @logger.warn "  Existing Permission: #{existing_permission}"
+          @logger.warn "  Proposed Permission: #{permission}"
+          @logger.info "  Proposed Permission change would downgrade permissions. No permission updates applied."
+        end
+      else
+        update_permission_workspacelevel(workspace, user, permission)
+      end
     else
-      @logger.info "  #{user["UserName"]} #{workspace["Name"]} - No permission updates"
+      @logger.info "  #{user["UserName"]} #{workspace["Name"]} - Existing/new permission same. No permission updates applied."
     end
   end
 
   def update_project_permissions(project, user, permission, new_user)
     if new_user or project_permissions_different?(project, user, permission)
-      update_permission_projectlevel(project, user, permission)
+      if @upgrade_only_mode then
+        is_upgrade, existing_permission = is_project_permission_upgrade?(project, user, permission)
+        if is_upgrade then
+          update_permission_projectlevel(project, user, permission)
+        else
+          @logger.warn "  #{user["UserName"]} #{project["Name"]} - upgrade_only_mode == true."
+          @logger.warn "  Existing Permission: #{existing_permission}"
+          @logger.warn "  Proposed Permission: #{permission}"
+          @logger.warn "  Proposed Permission change would downgrade permissions. No permission updates applied."
+        end
+      else
+        update_permission_projectlevel(project, user, permission)
+      end
     else
-      @logger.info "  #{user["UserName"]} #{project["Name"]} - No permission updates"
+      @logger.info "  #{user["UserName"]} #{project["Name"]} - Existing/new permission same. No permission updates applied."
     end
   end
 
-  def create_user(user_name, display_name, first_name, last_name)
+  def create_user(user_name, fields = user_fields)
 
     new_user_obj = {}
 
     new_user_obj["UserName"] = user_name.downcase
     new_user_obj["EmailAddress"] = user_name.downcase
-    new_user_obj["DisplayName"] = display_name
-    new_user_obj["FirstName"] = first_name
-    new_user_obj["LastName"] = last_name
+
+    fields.each_pair do | key, value |
+      new_user_obj[key] = value
+    end
 
     new_user = nil
 
@@ -967,6 +1132,34 @@ class UserHelper
     # Cache the new user
     @cached_users[user_name.downcase] = new_user_created
     return new_user_created
+  end
+
+  def update_user(user, fields = user_fields)
+
+    user_name = user["UserName"]
+    begin
+      if @create_flag
+        updated_user = user.update(fields)
+      end
+      @logger.info "Updated Rally user #{user_name.downcase}"
+    rescue
+      @logger.error "Error creating user: #{$!}"
+      raise $!
+    end
+
+    # Grab full object of the created user and return so that we can use it later
+    updated_user_query = RallyAPI::RallyQuery.new()
+    updated_user_query.type = :user
+    updated_user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+    updated_user_query.query_string = "(UserName = \"#{user_name.downcase}\")"
+    updated_user_query.order = "UserName Asc"
+
+    query_results = @rally.find(updated_user_query)
+    updated_user_object = query_results.first
+
+    # Cache the new user
+    @cached_users[user_name.downcase] = updated_user_object
+    return
   end
 
   def disable_user(user)
@@ -998,12 +1191,28 @@ class UserHelper
     end
   end
 
+  # Checks to see if input record is using:
+  # Text string (i.e. Editor, Viewer)
+  # Or
+  # User (i.e. john.doe@company.com)
+  # as source of default permissions
+  def check_default_permission_type(value)
+
+      type = :stringsource
+      if !value.match(/@/).nil? then
+          type = :usersource
+      end
+      return type
+  end
+
+  # Pulls Project OID off of team membership _ref
   def get_membership_oid_from_membership(team_membership)
     this_membership_ref = team_membership._ref
     this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
     return this_membership_oid
   end
 
+  # Checks to see if a user is a Team Member for a particular project
   def is_team_member(project_oid, user)
 
     # Default values
@@ -1020,7 +1229,6 @@ class UserHelper
 
         # Grab the Project OID off of the ref URL
         this_membership_oid = get_membership_oid_from_membership(this_membership)
-
         if this_membership_oid == project_oid then
           is_member = true
         end
@@ -1101,6 +1309,119 @@ end
     end
   end
 
+  # Check to see if User has _any_ permission within a specific workspace
+  def does_user_have_workspace_permission?(workspace, user)
+    # set default return value
+    workspace_permission_exists = false
+
+    use_cache = false
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if @cached_users != nil then
+      if @cached_users.has_key?(user.UserName) then use_cache = true end
+    end
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if use_cache then
+
+      this_user = @cached_users[user.UserName]
+
+      # loop through permissions and look to see if there's an existing permission for this
+      # workspace, and if so, has it changed
+      user_permissions = this_user.UserPermissions
+      user_permissions.each do | this_permission |
+        if this_permission._type == "WorkspacePermission" then
+          if this_permission.Workspace.ObjectID.to_s == workspace["ObjectID"].to_s then
+            workspace_permission_exists = true
+            break
+          end
+        end
+      end
+
+    else # Cache does not exist or user isn't in it - query info from Rally
+      workspace_permission_query = RallyAPI::RallyQuery.new()
+      workspace_permission_query.type = :workspacepermission
+      workspace_permission_query.fetch = "Workspace,Name,ObjectID,Role,User"
+      workspace_permission_query.page_size = 200 #optional - default is 200
+      workspace_permission_query.order = "Name Asc"
+      workspace_permission_query.query_string = "(User.UserName = \"" + user.UserName + "\")"
+
+      query_results = @rally.find(workspace_permission_query)
+
+      workspace_permission_exists = false
+
+      # Look to see if any existing WorkspacePermissions for this user match the one we're examining
+      # If so, check to see if the workspace permissions are any different
+      query_results.each { |wp|
+        if ( wp.Workspace.ObjectID == workspace["ObjectID"])
+          workspace_permission_exists = true
+          break
+        end
+      }
+    end
+    return workspace_permission_exists
+  end
+
+  # Check to see if User has _any_ permission within a specific project
+  def does_user_have_project_permission?(project, user)
+
+    # set default return value
+    project_permission_exists = false
+
+    use_cache = false
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if @cached_users != nil then
+      if @cached_users.has_key?(user.UserName) then use_cache = true end
+    end
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if use_cache then
+
+      this_user = @cached_users[user.UserName]
+
+      # loop through permissions and look to see if there's an existing permission for this
+      # workspace, and if so, has it changed
+
+      user_permissions = this_user.UserPermissions
+
+      user_permissions.each do |this_permission|
+
+        if this_permission._type == "ProjectPermission" then
+          # user has existing permissions in this project - let's compare new role against existing
+          if this_permission.Project.ObjectID.to_s == project["ObjectID"].to_s then
+            project_permission_exists = true
+            break
+          end
+        end
+      end
+
+    else # Cache does not exist or user isn't in it - query info from Rally
+
+      project_permission_query = RallyAPI::RallyQuery.new()
+      project_permission_query.type = :projectpermission
+      project_permission_query.fetch = "Project,Name,ObjectID,Role,User"
+      project_permission_query.page_size = 200 #optional - default is 200
+      project_permission_query.order = "Name Asc"
+      project_permission_query.query_string = "(User.UserName = \"" + user.UserName + "\")"
+
+      query_results = @rally.find(project_permission_query)
+
+      project_permission_exists = false
+
+      # Look to see if any existing ProjectPermissions for this user match the one we're examining
+      # If so, check to see if the project permissions are any different
+      query_results.each { |pp|
+
+        if ( pp.Project.ObjectID == project["ObjectID"])
+          project_permission_exists = true
+          break
+        end
+      }
+    end
+    return project_permission_exists
+  end
+
   #--------- Private methods --------------
   private
 
@@ -1141,6 +1462,187 @@ end
     return make_team_member_url
   end
 
+  # check if the new permissions are an upgrade vs. what the user currently has
+  def is_project_permission_upgrade?(project, user, new_permission)
+
+    # set default return value
+    project_permission_upgrade = false
+
+    # set a default existing_permission conservatively at Project Admin
+    existing_permission = PROJECTADMIN_READ
+    use_cache = false
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if @cached_users != nil then
+      if @cached_users.has_key?(user.UserName) then use_cache = true end
+    end
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if use_cache then
+
+      number_matching_projects = 0
+      this_user = @cached_users[user.UserName]
+
+      # loop through permissions and look to see if there's an existing permission for this
+      # workspace, and if so, is our proposed change an upgrade
+      user_permissions = this_user.UserPermissions
+      user_permissions.each do | this_permission |
+
+        if this_permission._type == "ProjectPermission" then
+          # user has existing permissions in this project - let's compare new role against existing
+          if this_permission.Project.ObjectID.to_s == project["ObjectID"].to_s then
+            existing_permission = this_permission.Role
+            case existing_permission
+
+              # you can't upgrade a PROJECTADMIN, so return false
+              when PROJECTADMIN_READ
+                project_permission_upgrade = false
+              when EDITOR
+                if new_permission.eql?(PROJECTADMIN_READ) then
+                  project_permission_upgrade = true
+                end
+              when VIEWER
+                if new_permission.eql?(EDITOR) || new_permission.eql?(PROJECTADMIN_READ) then
+                  project_permission_upgrade = true
+                end
+              # NOACCESS is denoted by non-existence of a permission so we don't
+              # check that here
+            end
+            number_matching_projects += 1
+          end
+        end
+      end
+
+      # This is a new project permission - set the changed bit to true
+      if number_matching_projects == 0 then
+         project_permission_upgrade = true
+      end
+
+    else # Cache does not exist or user isn't in it - query info from Rally
+
+      project_permission_query = RallyAPI::RallyQuery.new()
+      project_permission_query.type = :projectpermission
+      project_permission_query.fetch = "Project,Name,ObjectID,Role,User"
+      project_permission_query.page_size = 200 #optional - default is 200
+      project_permission_query.order = "Name Asc"
+      project_permission_query.query_string = "(User.UserName = \"" + user.UserName + "\")"
+
+      query_results = @rally.find(project_permission_query)
+
+      project_permission_upgrade = false
+      number_matching_projects = 0
+
+      # Look to see if any existing ProjectPermissions for this user match the one we're examining
+      # If so, check to see if the project permissions are any different
+      query_results.each { |pp|
+
+        if ( pp.Project.ObjectID == project["ObjectID"])
+          number_matching_projects+=1
+          existing_permission = pp.Role
+          case existing_permission
+              # you can't upgrade a PROJECTADMIN, so return false
+              when PROJECTADMIN_READ
+                  project_permission_upgrade = false
+              when EDITOR
+                  if new_permission.eql?(PROJECTADMIN_READ) then
+                      project_permission_upgrade = true
+                  end
+              when VIEWER
+                  if new_permission.eql?(EDITOR) || new_permission.eql?(PROJECTADMIN_READ) then
+                      project_permission_upgrade = true
+                  end
+              # NOACCESS is denoted by non-existence of a permission so we don't
+              # check that here
+          end
+        end
+      }
+      # This is a new project permission - set the upgrade bit to true
+      if number_matching_projects == 0 then project_permission_upgrade = true end
+    end
+    return project_permission_upgrade, existing_permission
+  end
+
+  def is_workspace_permission_upgrade?(workspace, user, new_permission)
+
+    # set default return values
+    workspace_permission_upgrade = false
+
+    # set a default existing_permission conservatively at Admin
+    existing_permission = ADMIN
+    use_cache = false
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if @cached_users != nil then
+      if @cached_users.has_key?(user.UserName) then use_cache = true end
+    end
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if use_cache then
+
+      number_matching_workspaces = 0
+      this_user = @cached_users[user.UserName]
+
+      # loop through permissions and look to see if there's an existing permission for this
+      # workspace, and if so, has it changed
+      user_permissions = this_user.UserPermissions
+      user_permissions.each do | this_permission |
+        if this_permission._type == "WorkspacePermission" then
+          if this_permission.Workspace.ObjectID.to_s == workspace["ObjectID"].to_s then
+            existing_permission = this_permission.Role
+            number_matching_workspaces += 1
+            case existing_permission
+              # Can't upgrade an admin, so return false
+              when ADMIN
+                workspace_permission_upgrade = false
+              when USER
+                if new_permission.eql?(ADMIN) then
+                  workspace_permission_upgrade = true
+                end
+              # No-Access is denoted by an absence of a Permission - we don't need to check that here
+            end
+          end
+        end
+      end
+      # This is a new workspace permission - set the changed bit to true
+      if number_matching_workspaces == 0 then workspace_permission_upgrade = true end
+
+    else # Cache does not exist or user isn't in it - query info from Rally
+      workspace_permission_query = RallyAPI::RallyQuery.new()
+      workspace_permission_query.type = :workspacepermission
+      workspace_permission_query.fetch = "Workspace,Name,ObjectID,Role,User"
+      workspace_permission_query.page_size = 200 #optional - default is 200
+      workspace_permission_query.order = "Name Asc"
+      workspace_permission_query.query_string = "(User.UserName = \"" + user.UserName + "\")"
+
+      query_results = @rally.find(workspace_permission_query)
+
+      workspace_permission_upgrade = false
+      number_matching_workspaces = 0
+
+      # Look to see if any existing WorkspacePermissions for this user match the one we're examining
+      # If so, check to see if the workspace permissions are any different
+      query_results.each { |wp|
+        if ( wp.Workspace.ObjectID == workspace["ObjectID"])
+          existing_permission = wp.Role
+          number_matching_workspaces+=1
+          case existing_permission
+            # Can't upgrade an admin, so return false
+            when ADMIN
+              workspace_permission_upgrade = false
+            when USER
+              if new_permission.eql?(ADMIN) then
+                workspace_permission_upgrade = true
+              end
+            # No-Access is denoted by an absence of a Permission - we don't need to check that here
+          end
+        end
+      }
+      # This is a new workspace permission - set the changed bit to true
+      if number_matching_workspaces == 0 then workspace_permission_upgrade = true end
+    end
+    return workspace_permission_upgrade, existing_permission
+  end
+
   # check if the new permissions are different than what the user currently has
   # if we don't do this, we will delete and recreate permissions each time and that
   # will make the revision history on user really, really, really, really ugly
@@ -1148,45 +1650,39 @@ end
 
     # set default return value
     project_permission_changed = false
+    use_cache = false
 
     # first try to lookup against cached user list -- much faster than re-querying Rally
     if @cached_users != nil then
+      if @cached_users.has_key?(user.UserName) then use_cache = true end
+    end
 
+    if use_cache then
       number_matching_projects = 0
+      this_user = @cached_users[user.UserName]
 
-      # Pull user from cached users hash
-      if @cached_users.has_key?(user.UserName) then
+      # loop through permissions and look to see if there's an existing permission for this
+      # workspace, and if so, has it changed
+      user_permissions = this_user.UserPermissions
+      user_permissions.each do | this_permission |
 
-        this_user = @cached_users[user.UserName]
-
-        # loop through permissions and look to see if there's an existing permission for this
-        # workspace, and if so, has it changed
-
-        user_permissions = this_user.UserPermissions
-
-        user_permissions.each do |this_permission|
-
-          if this_permission._type == "ProjectPermission" then
-            # user has existing permissions in this project - let's compare new role against existing
-            if this_permission.Project.ObjectID.to_s == project["ObjectID"].to_s then
-              number_matching_projects += 1
-              if this_permission.Role != new_permission then
-                project_permission_changed = true
-              end
+        if this_permission._type == "ProjectPermission" then
+          # user has existing permissions in this project - let's compare new role against existing
+          if this_permission.Project.ObjectID.to_s == project["ObjectID"].to_s then
+            number_matching_projects += 1
+            if this_permission.Role != new_permission then
+              project_permission_changed = true
             end
           end
         end
-
-        # This is a new project permission - set the changed bit to true
-        if number_matching_projects == 0 then
-          project_permission_changed = true
-        end
-
-      else # User isn't in user cache - this is a new user with all new permissions - set changed bit to true
-        project_permission_changed = true
       end
 
-    else # no cached users - query info from Rally
+      # This is a new project permission - set the changed bit to true
+      if number_matching_projects == 0 then
+          project_permission_changed = true
+      end
+
+    else # Cache does not exist or user isn't in it - query info from Rally
 
       project_permission_query = RallyAPI::RallyQuery.new()
       project_permission_query.type = :projectpermission
@@ -1224,33 +1720,34 @@ end
     # set default return value
     workspace_permission_changed = false
 
+    use_cache = false
+
     # first try to lookup against cached user list -- much faster than re-querying Rally
     if @cached_users != nil then
+      if @cached_users.has_key?(user.UserName) then use_cache = true end
+    end
+
+    # first try to lookup against cached user list -- much faster than re-querying Rally
+    if use_cache then
 
       number_matching_workspaces = 0
+      this_user = @cached_users[user.UserName]
 
-      # Pull user from cached users hash
-      if @cached_users.has_key?(user.UserName) then
-        this_user = @cached_users[user.UserName]
-
-        # loop through permissions and look to see if there's an existing permission for this
-        # workspace, and if so, has it changed
-        user_permissions = this_user.UserPermissions
-        user_permissions.each do | this_permission |
-          if this_permission._type == "WorkspacePermission" then
-            if this_permission.Workspace.ObjectID.to_s == workspace["ObjectID"].to_s then
-              number_matching_workspaces += 1
-              if this_permission.Role != new_permission then workspace_permission_changed = true end
-            end
+      # loop through permissions and look to see if there's an existing permission for this
+      # workspace, and if so, has it changed
+      user_permissions = this_user.UserPermissions
+      user_permissions.each do | this_permission |
+        if this_permission._type == "WorkspacePermission" then
+          if this_permission.Workspace.ObjectID.to_s == workspace["ObjectID"].to_s then
+            number_matching_workspaces += 1
+            if this_permission.Role != new_permission then workspace_permission_changed = true end
           end
         end
-        # This is a new workspace permission - set the changed bit to true
-        if number_matching_workspaces == 0 then workspace_permission_changed = true end
-      else # User isn't in user cache - this is a new user with all new permissions - set changed bit to true
-        workspace_permission_changed = true
       end
+      # This is a new workspace permission - set the changed bit to true
+      if number_matching_workspaces == 0 then workspace_permission_changed = true end
 
-    else # no cached users - query info from Rally
+    else # Cache does not exist or user isn't in it - query info from Rally
       workspace_permission_query = RallyAPI::RallyQuery.new()
       workspace_permission_query.type = :workspacepermission
       workspace_permission_query.fetch = "Workspace,Name,ObjectID,Role,User"
@@ -1375,7 +1872,9 @@ end
 
   def update_permission_projectlevel(project, user, permission)
     @logger.info "  #{user.UserName} #{project["Name"]} - Permission set to #{permission}"
-    if permission == ADMIN
+    if permission == PROJECTADMIN_READ
+      # Hopefully temporary re-cast of "Admin" to "Project Admin"
+      permission = PROJECTADMIN_CREATE
       create_project_permission(user, project, permission)
     elsif permission == NOACCESS
       delete_project_permission(user, project)

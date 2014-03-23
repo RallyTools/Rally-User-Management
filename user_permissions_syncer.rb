@@ -1,4 +1,5 @@
-# Copyright (c) 2013 Rally Software Development
+# encoding: UTF-8
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +19,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# encoding: UTF-8
-
 # Usage: ruby user_permissions_loader.rb user_permissions_loader.txt
 # Expected input files are defined as global variables below
 
@@ -37,6 +36,9 @@ require File.dirname(__FILE__) + "/user_helper.rb"
 $my_base_url                        = "https://rally1.rallydev.com/slm"
 $my_username                        = "user@company.com"
 $my_password                        = "password"
+
+# Encoding
+$file_encoding                      = "US-ASCII"
 
 $user_synclist_filename = ARGV[0]
 
@@ -85,6 +87,10 @@ $max_cache_age                      = 1
 # Flag specifying whether to sync team memberships along with
 # user permissions
 $sync_team_memberships              = true
+
+# upgrade_only_mode - when running in upgrade_only_mode, check existing permissions
+# first, and only apply the change if it represents an upgrade over existing permissions
+$upgrade_only_mode                  = false
 
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
@@ -167,7 +173,15 @@ begin
 
   #Helper Methods
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age)
+  uh_config                       = {}
+  uh_config[:rally_api]           = @rally
+  uh_config[:logger]              = @logger
+  uh_config[:create_flag]         = true
+  uh_config[:max_cache_age]       = $max_cache_age
+  uh_config[:upgrade_only_mode]   = $upgrade_only_mode
+  uh_config[:file_encoding]       = $file_encoding
+
+  @uh = UserHelper.new(uh_config)
 
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
@@ -196,7 +210,7 @@ begin
     @uh.cache_users()
   end
 
-  input  = CSV.read($user_synclist_filename, {:col_sep => $my_delim })
+  input  = CSV.read($user_synclist_filename, {:col_sep => $my_delim, :encoding => $file_encoding})
 
   header = input.first #ignores first line
 

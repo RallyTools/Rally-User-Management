@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Rally Software Development
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@
 
 class UserManagementVersion
 
-    VERSION = "0.51"
+    VERSION = "0.52"
 
     def revision
         return VERSION
