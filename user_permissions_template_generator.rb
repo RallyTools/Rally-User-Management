@@ -77,11 +77,14 @@ $TEAMMEMBER_NO = 'No'
 $TEAMMEMBER_NA = 'N/A'
 
 # symbols
-:type_workspace
-:type_project
+# :type_workspace
+# :type_project
 
 # Output file delimiter
-$my_delim = "\t"
+$my_delim                     = "\t"
+
+# Encoding
+$file_encoding                = "US-ASCII"
 
 # Preps output records to write to Permissions Template file
 def prep_record_for_export(input_record, type, input_user, permission, is_teammember)
@@ -324,7 +327,15 @@ begin
 
   # Instantiate the User Helper
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age)
+  uh_config                       = {}
+  uh_config[:rally_api]           = @rally
+  uh_config[:logger]              = @logger
+  uh_config[:create_flag]         = true
+  uh_config[:max_cache_age]       = $max_cache_age
+  uh_config[:upgrade_only_mode]   = $upgrade_only_mode
+  uh_config[:file_encoding]       = $file_encoding
+
+  @uh = UserHelper.new(uh_config)
 
   @logger.info "Querying Workspace/Projects and caching results..."
   refresh_needed, reason = @uh.cache_refresh_needed()
@@ -346,13 +357,13 @@ begin
 
   # Start output of template
   # Output CSV header
-  $template_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
+  $template_csv = CSV.open($my_output_file, "wb", {:col_sep => $my_delim, :encoding => $file_encoding})
 
   # Write the output CSV header
   $template_csv << $template_output_fields
 
   # Read input CSV for source of User data
-  input  = CSV.read($user_list_filename, {:col_sep => $my_delim })
+  input  = CSV.read($user_list_filename, {:col_sep => $my_delim, :encoding => $file_encoding })
 
   header = input.first #ignores first line
 
