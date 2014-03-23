@@ -1,3 +1,4 @@
+# encoding: UTF-8
 # Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,6 +30,9 @@ rally_password         = "topsecret"
 # Default to WSAPI 1.33 to accommodate potentially older On-Premise appliances
 rally_ws_version       = "1.33"
 filename               = 'ldap_username_load_template.csv'
+
+# Encoding
+$file_encoding         = "US-ASCII"
 
 def get_rally_users()
 
@@ -92,7 +96,7 @@ begin
 
   @rally = RallyAPI::RallyRestJson.new(config)
 
-  input  = CSV.read(filename)
+  input  = CSV.read(filename, {:encoding => $file_encoding})
   header = input.first #ignores first line
 
   rows   = []
