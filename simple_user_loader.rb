@@ -1,3 +1,4 @@
+# encoding: UTF-8
 # Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,6 +38,9 @@ require File.dirname(__FILE__) + "/user_helper.rb"
 $my_base_url                        = "https://rally1.rallydev.com/slm"
 $my_username                        = "user@company.com"
 $my_password                        = "password"
+
+# Encoding
+$file_encoding                      = "US-ASCII"
 
 $input_filename = ARGV[0]
 
@@ -428,7 +432,15 @@ begin
 
   #Helper Methods
   @logger.info "Instantiating User Helper..."
-  @uh = UserHelper.new(@rally, @logger, true, $max_cache_age, $upgrade_only_mode)
+  uh_config                       = {}
+  uh_config[:rally_api]           = @rally
+  uh_config[:logger]              = @logger
+  uh_config[:create_flag]         = true
+  uh_config[:max_cache_age]       = $max_cache_age
+  uh_config[:upgrade_only_mode]   = $upgrade_only_mode
+  uh_config[:file_encoding]       = $file_encoding
+
+  @uh = UserHelper.new(uh_config)
 
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
@@ -465,7 +477,7 @@ begin
   $open_workspaces = @uh.get_cached_workspaces()
   $open_projects = @uh.get_workspace_project_hash()
 
-  input  = CSV.read($input_filename, {:col_sep => $my_delim })
+  input  = CSV.read($input_filename, {:col_sep => $my_delim, :encoding => $file_encoding})
 
   header = input.first #ignores first line
 
