@@ -242,13 +242,23 @@ def update_attributes(header, row)
     end
 
     # Update attributes on UserProfile Object
-    if need_default_workspace_update && need_default_workspace_update then
+    if need_default_workspace_update && need_default_project_update then
       user_profile = user["UserProfile"]
       user_profile.read
 
       # Construct refs for Default Workspace Project
       default_workspace = @uh.find_workspace_by_name(default_workspace_name)
       default_project   = @uh.find_project_by_name(default_project_name)
+
+      if default_workspace.nil? then
+        @logger.warn "    Default Workspace: #{default_workspace} Not found. Skipping update."
+        return
+      end
+
+      if default_project.nil? then
+        @logger.warn "    Default Project: #{default_project} Not found. Skipping update."
+        return
+      end
 
       # Check to see if default project is in the default workspace
       is_project_in_workspace = @uh.is_project_in_workspace(default_project, default_workspace)
