@@ -274,28 +274,30 @@ def create_user(header, row)
         end
 
         project_count = 0
-        these_projects.each do | this_project |
+        if !these_projects.nil? then
+          these_projects.each do | this_project |
 
-          # Circuit-breaker for testing mode
-          project_count += 1
-          if project_count > $max_projects && $test_mode then
-            @logger.info "  TEST MODE: Breaking projects at maximum of #{$max_projects}."
-            break
-          end
+            # Circuit-breaker for testing mode
+            project_count += 1
+            if project_count > $max_projects && $test_mode then
+              @logger.info "  TEST MODE: Breaking projects at maximum of #{$max_projects}."
+              break
+            end
 
-          this_project_name             = this_project["Name"]
-          this_project_state            = this_project["State"]
-          this_project_object_id        = this_project["ObjectID"]
-          this_project_object_id_string = this_project_object_id.to_s
+            this_project_name             = this_project["Name"]
+            this_project_state            = this_project["State"]
+            this_project_object_id        = this_project["ObjectID"]
+            this_project_object_id_string = this_project_object_id.to_s
 
-          @uh.update_project_permissions(this_project, user, default_permission_string, new_user)
+            @uh.update_project_permissions(this_project, user, default_permission_string, new_user)
 
-          # Update Team Membership (Only applicable for Editor Permissions at Project level)
-          if default_permission_string == $EDITOR then
-            @uh.update_team_membership(user, this_project_object_id_string, this_project_name, team_membership)
-          else
-            @logger.info "  Permission level: #{default_permission_string}, Team Member: #{team_membership}. #{$EDITOR} Permission needed to be " + \
-               "Team Member. No Team Membership update: N/A."
+            # Update Team Membership (Only applicable for Editor Permissions at Project level)
+            if default_permission_string == $EDITOR then
+              @uh.update_team_membership(user, this_project_object_id_string, this_project_name, team_membership)
+            else
+              @logger.info "  Permission level: #{default_permission_string}, Team Member: #{team_membership}. #{$EDITOR} Permission needed to be " + \
+                 "Team Member. No Team Membership update: N/A."
+            end
           end
         end
       end
