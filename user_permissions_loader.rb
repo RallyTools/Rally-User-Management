@@ -254,9 +254,11 @@ def update_permission(header, row)
     # Update Team Membership (Only applicable for Editor or Admin Permissions at Project level)
     if permission_level == $EDITOR || permission_level == $PROJECTADMIN then
       @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
-    else
+    elsif permission_level == $VIEWER && team_member == $TEAMMEMBER_YES then
       @logger.info "  Permission level: #{permission_level}, Team Member: #{team_member}. #{$EDITOR} or #{$PROJECTADMIN} Permission needed to be " + \
          "Team Member. No Team Membership update: N/A."
+    else
+        @logger.info "  No Team Membership update: N/A."\
     end
   end
   $prev_user = username
