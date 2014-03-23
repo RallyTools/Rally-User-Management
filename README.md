@@ -47,9 +47,9 @@ The contents of this Github repository include:
 - ldap_username_load.rb                         - Script to update Onprem Ldap Username field when enabling LDAP for Rally On-Premise
 - ldap_username_load_template.csv               - Template file contain list of Username and OnpremLdapUsername values.
 - my_vars.rb                                    - User configurable variables
-- new_user_list_template.txt                    - START HERE! This is the list of users/attributes you want to create
+- new_user_list_template.txt                    - Template list of users/attributes you want to create
 - simple_user_loader.rb                         - A simplified user loader that creates users directly.
-- simple_user_loader_template.txt               - Template file for users, permissions, and attributes used as input to the simple_user_loader.rb script.
+- simple_user_loader_template.txt               - START HERE! Template file for users, permissions, and attributes used as input to the simple_user_loader.rb script.
 - update_user_attributes.rb                     - A script to bulk update standard and extended User Attributes such as Department, CostCenter, Default Workspace/Project, TimeZone.
 - update_user_attributes_template.txt           - Template file for user attribute updates, used as input to the update_user_attributes.rb script
 - user_helper.rb                                - Helper class with many utility functions
