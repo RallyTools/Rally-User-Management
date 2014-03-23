@@ -116,7 +116,7 @@ begin
   $headers                = RallyAPI::CustomHttpHeader.new()
   $headers.name           = "Ruby User Management Tool 2::User Enabler-Disabler"
   $headers.vendor         = "Rally Labs"
-  $headers.version        = user_mgmt_version.revision()
+  $headers.version        = @user_mgmt_version.revision()
 
   config                  = {:base_url => $my_base_url}
   config[:username]       = $my_username
