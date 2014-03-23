@@ -650,18 +650,28 @@ class UserHelper
         # make sure workspace OID is a string
         this_workspace_oid_string = this_workspace_oid.to_s
 
-        # Building workspace_hash_of_projects - a mapping of workspace to project ownership
-        # We're on a new Workspace. Write the current list of Workspace's Projects to
-        # Workspace/Project Hash, and start new list of projects for new Workspace
-        if this_workspace_oid_string != current_workspace_oid_string && these_projects.length > 0
-          @workspace_hash_of_projects[current_workspace_oid_string] = these_projects
-          these_projects = []
-          these_projects.push(this_project)
-          current_workspace_oid_string = this_workspace_oid_string
+        if @workspace_hash_of_projects.has_key?[this_workspace_oid_string] then
+          these_projects = @workspace_hash_of_projects[this_workspace_oid_string]
         else
-            these_projects.push(this_project)
+          these_projects = []
         end
+
+        these_projects.push(this_project)
+        @workspace_hash_of_projects[this_workspace_oid_string] = these_projects
+
         number_processed += 1
+
+        # # Building workspace_hash_of_projects - a mapping of workspace to project ownership
+        # # We're on a new Workspace. Write the current list of Workspace's Projects to
+        # # Workspace/Project Hash, and start new list of projects for new Workspace
+        # if this_workspace_oid_string != current_workspace_oid_string && these_projects.length > 0
+        #   @workspace_hash_of_projects[current_workspace_oid_string] = these_projects
+        #   these_projects = []
+        #   these_projects.push(this_project)
+        #   current_workspace_oid_string = this_workspace_oid_string
+        # else
+        #     these_projects.push(this_project)
+        # end
       end
 
       # Once we've gone through all the rows, we still need to flush the last
