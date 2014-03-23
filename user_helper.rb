@@ -677,7 +677,7 @@ class UserHelper
       # Once we've gone through all the rows, we still need to flush the last
       # project set to the workspace hash of projects, since the last set
       # never received a "non-current" workspace oid to trigger writing it
-      @workspace_hash_of_projects[current_workspace_oid_string] = these_projects
+      #@workspace_hash_of_projects[current_workspace_oid_string] = these_projects
 
     end
     @logger.info "Completed reading project cache from #{project_cache_filename}"
