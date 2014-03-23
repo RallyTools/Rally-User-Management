@@ -49,29 +49,32 @@ class UserHelper
   WORKSPACE_CACHE_FIELDS      =  %w{ObjectID Name State}
   PROJECT_CACHE_FIELDS        =  %w{ObjectID ProjectName State WorkspaceName WorkspaceOID}
 
-  def initialize(rally, logger, create_flag = true, max_cache_age = 1, upgrade_only_mode = false)
+  def initialize(config)
 
-    @rally = rally
-    @rally_json_connection = @rally.rally_connection
-    @logger = logger
-    @create_flag = create_flag
-    @cached_users = {}
-    @cached_sub_id = 0
-    @cached_subscription = {}
-    @cached_workspaces = {}
-    @cached_projects = {}
+    @rally                     = config[:rally_api]
+    @rally_json_connection     = @rally.rally_connection
+    @logger                    = config[:logger]
+    @create_flag               = config[:create_flag]
+    @cached_users              = {}
+    @cached_sub_id             = 0
+    @cached_subscription       = {}
+    @cached_workspaces         = {}
+    @cached_projects           = {}
     @cached_workspaces_by_name = {}
-    @cached_projects_by_name = {}
+    @cached_projects_by_name   = {}
 
     # Provides lookup of projects per workspace
     @workspace_hash_of_projects = {}
 
     # Maximum age in days of the Workspace/Project cache before refresh
-    @max_cache_age = max_cache_age || 1
+    @max_cache_age = config[:max_cache_age] || 1
 
     # upgrade_only_mode - when running in upgrade_only_mode, check existing permissions
     # first, and only apply the change if it represents an upgrade over existing permissions
-    @upgrade_only_mode = upgrade_only_mode
+    @upgrade_only_mode = config[:upgrade_only_mode] || false
+
+    # File encoding format
+    @file_encoding = config[:file_encoding] || "US-ASCII"
 
     # User filter for ENABLED users only
     # For purposes of speed/efficiency, summarize Enabled Users ONLY
@@ -525,7 +528,7 @@ class UserHelper
     @logger.info "Started reading subscription cache from #{subscription_cache_filename}"
 
     # Read in Subscription cache items (should be only 1)
-    subscription_cache_input  = CSV.read(subscription_cache_filename, {:col_sep => CACHE_COL_DELIM})
+    subscription_cache_input  = CSV.read(subscription_cache_filename, {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding})
 
     header = subscription_cache_input.first #ignores first line
 
@@ -572,7 +575,7 @@ class UserHelper
     @logger.info "Started reading workspace cache from #{workspace_cache_filename}"
 
     # Read in workspace cache items (should be only 1)
-    workspace_cache_input  = CSV.read(workspace_cache_filename, {:col_sep => CACHE_COL_DELIM})
+    workspace_cache_input  = CSV.read(workspace_cache_filename, {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding})
 
     header = workspace_cache_input.first #ignores first line
 
@@ -628,7 +631,7 @@ class UserHelper
     @logger.info "Started reading project cache from #{project_cache_filename}"
 
     # Read in project cache items (should be only 1)
-    project_cache_input  = CSV.read(project_cache_filename, {:col_sep => CACHE_COL_DELIM})
+    project_cache_input  = CSV.read(project_cache_filename, {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding})
 
     header = project_cache_input.first #ignores first line
 
@@ -681,7 +684,7 @@ class UserHelper
     subscription_csv = CSV.open(
       subscription_cache_filename,
       CACHE_WRITE_MODE,
-      {:col_sep => CACHE_COL_DELIM}
+      {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding}
     )
     subscription_csv << SUB_CACHE_FIELDS
 
@@ -710,7 +713,7 @@ class UserHelper
     workspace_csv = CSV.open(
       workspace_cache_filename,
       CACHE_WRITE_MODE,
-      {:col_sep => CACHE_COL_DELIM}
+      {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding}
     )
     workspace_csv << WORKSPACE_CACHE_FIELDS
 
@@ -746,7 +749,7 @@ class UserHelper
     project_csv = CSV.open(
       project_cache_filename,
       CACHE_WRITE_MODE,
-      {:col_sep => CACHE_COL_DELIM}
+      {:col_sep => CACHE_COL_DELIM, :encoding => @file_encoding}
     )
     project_csv << PROJECT_CACHE_FIELDS
 
