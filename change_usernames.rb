@@ -1,3 +1,4 @@
+# encoding: UTF-8
 # Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +33,9 @@ $wsapi_version                 = "1.43"
 # :usernameandemail => resets both UserName and Email to the updated value
 # :usernameonly => only resets UserName. Email address remains unchanged
 $user_update_mode              = :usernameandemail
+
+# Encoding
+$file_encoding                 = "US-ASCII"
 
 $users_filename = ARGV[0]
 
@@ -99,7 +103,7 @@ begin
 
   @rally = RallyAPI::RallyRestJson.new(config)
 
-  input  = CSV.read($users_filename)
+  input  = CSV.read($users_filename, {:encoding => $file_encoding})
 
   header = input.first #ignores first line
 
