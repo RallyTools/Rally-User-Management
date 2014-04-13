@@ -857,7 +857,11 @@ class UserHelper
     write_project_cache()
   end
 
-  # Mirrors project permission set from a source user to a target user
+  # Mirrors ProjectPermission set from a source user to a target user
+  # Note that creation of a ProjectPermission will automatically create
+  # the minimum needed WorkspacePermission for the "owning" Workspace,
+  # if a WorkspacePermission does not already exist. Thus there's
+  # no need for a sync_workspace_permissions method
   def sync_project_permissions(source_user_id, target_user_id)
     source_user = find_user(source_user_id)
     target_user = find_user(target_user_id)
@@ -931,8 +935,17 @@ class UserHelper
     permissions_to_create.each do | this_new_permission |
       this_project = find_project(this_new_permission.Project.ObjectID.to_s)
       if !this_project.nil? then
+
+        this_project = this_new_permission.Project
+        this_workspace = this_project.Workspace
+        this_workspace.read
+
         this_project_name = this_new_permission.Project.Name
+        this_workspace_name = this_workspace.Name
+
         this_role = this_new_permission.Role
+
+        @logger.info "Workspace: #{this_workspace_name}"
         @logger.info "Creating #{this_role} permission on #{this_project_name} from #{source_user_id} to: #{target_user_id}."
         create_project_permission(target_user, this_project, this_role)
         number_new_permissions += 1
@@ -944,8 +957,16 @@ class UserHelper
     permissions_to_update.each do | this_new_permission |
       this_project = find_project(this_new_permission.Project.ObjectID.to_s)
       if !this_project.nil? then
+        this_project = this_new_permission.Project
+        this_workspace = this_project.Workspace
+        this_workspace.read
+
         this_project_name = this_new_permission.Project.Name
+        this_workspace_name = this_workspace.Name
+
         this_role = this_new_permission.Role
+
+        @logger.info "Workspace: #{this_workspace_name}"
         @logger.info "Updating #{this_role} permission on #{this_project_name} from #{source_user_id} to: #{target_user_id}."
         create_project_permission(target_user, this_project, this_role)
         number_updated_permissions += 1
@@ -957,16 +978,27 @@ class UserHelper
     permissions_to_delete.each do | this_deleted_permission |
       this_project = find_project(this_deleted_permission.Project.ObjectID.to_s)
       if !this_project.nil? then
+        this_project = this_deleted_permission.Project
+        this_workspace = this_project.Workspace
+        this_workspace.read
+
         this_project_name = this_deleted_permission.Project.Name
+        this_workspace_name = this_workspace.Name
+
         this_role = this_deleted_permission.Role
+
+        @logger.info "Workspace: #{this_workspace_name}"
         @logger.info "Removing #{this_role} permission to #{this_project_name} from #{target_user_id} since it is not present on source: #{source_user_id}."
-        delete_project_permission(target_user, this_project)
-        number_removed_permissions += 1
+        if !@upgrade_only_mode then
+          delete_project_permission(target_user, this_project)
+          number_removed_permissions += 1
+        else
+          @logger.info "  #{target_user_id} - upgrade_only_mode == true."
+          @logger.info "  Proposed Permission removal would downgrade permissions. No permission removal applied."
+        end
       end
     end
-
     @logger.info "#{number_new_permissions} Permissions Created; #{number_updated_permissions} Permissions Updated; #{number_removed_permissions} Permissions Removed."
-
   end
 
     # Mirrors team membership set from a source user to a target user
@@ -1794,8 +1826,15 @@ end
   end
 
   # Project permissions are automatically deleted in this case
-  # TODO: There may be a bug in removing permissions once you have them, not sure though
   def delete_workspace_permission(user, workspace)
+
+    if @upgrade_only_mode then
+      @logger.info "  #{user["UserName"]} #{workspace["Name"]} - upgrade_only_mode == true."
+      @logger.warn "  Proposed Permission: #{NOACCESS}"
+      @logger.info "  Proposed Permission change would downgrade permissions. No permission updates applied."
+      return
+    end
+
     # queries on permissions are a bit limited - to only one filter parameter
     workspace_permission_query = RallyAPI::RallyQuery.new()
     workspace_permission_query.type = :workspacepermission
@@ -1811,7 +1850,7 @@ end
       this_workspace = this_workspace_permission.Workspace
       this_workspace_oid = this_workspace["ObjectID"].to_s
 
-      if this_workspace_permission != nil && this_workspace_oid == workspace["ObjectID"]
+      if this_workspace_permission != nil && this_workspace_oid == workspace["ObjectID"].to_s
         begin
           @rally.delete(this_workspace_permission["_ref"])
         rescue Exception => ex
@@ -1827,6 +1866,14 @@ end
   end
 
   def delete_project_permission(user, project)
+
+    if @upgrade_only_mode then
+      @logger.info "  #{user["UserName"]} #{project["Name"]} - upgrade_only_mode == true."
+      @logger.warn "  Proposed Permission: #{NOACCESS}"
+      @logger.info "  Proposed Permission change would downgrade permissions. No permission updates applied."
+      return
+    end
+
     # queries on permissions are a bit limited - to only one filter parameter
     project_permission_query = RallyAPI::RallyQuery.new()
     project_permission_query.type = :projectpermission
@@ -1836,13 +1883,12 @@ end
     project_permission_query.query_string = "(User.UserName = \"" + user.UserName + "\")"
 
     query_results = @rally.find(project_permission_query)
-
-    query_results.each do |this_project_permission|
+    query_results.each do | this_project_permission |
 
       this_project = this_project_permission.Project
       this_project_oid = this_project.ObjectID.to_s
 
-      if this_project_permission != nil && this_project_oid == project["ObjectID"]
+      if this_project_permission != nil && this_project_oid == project["ObjectID"].to_s
         begin
           @rally.delete(this_project_permission["_ref"])
         rescue Exception => ex
