@@ -205,13 +205,6 @@ def update_permission(header, row)
   # look up user
   user = @uh.find_user(username)
 
-  # Create User if they do not exist
-  # Warning: if you opt to allow new user creation as part of the script:
-  # New users are created with one default WorkspacePermission and one default ProjectPermission, per the following rules:
-  # This newly created user will have Workspace User and Project Viewer permissions according to the script user's default workspace and project.
-  # If no default workspace or project is set, the first open project will be chosen alphabetically.
-  # The workspace associated with that project will be chosen as the current default workspace.
-
   # Check user-level update circuit breaker
   if username.eql?($prev_user)
     $user_update_count += 1
@@ -224,8 +217,12 @@ def update_permission(header, row)
     $user_update_count = 0
   end
 
-  #create user if they do not exist
-  if user == nil
+    # Create User if they do not exist
+    # Warning: if you opt to allow new user creation as part of the script:
+    # New users are created with one default WorkspacePermission and one default ProjectPermission, per the following rules:
+    # This newly created user will have Workspace User and Project Viewer permissions according to the script user's default workspace and project.
+    # If no default workspace or project is set, the first open project will be chosen alphabetically.
+    # The workspace associated with that project will be chosen as the current default workspace.  if user == nil
     @logger.info "User #{username} does not yet exist. Creating..."
     begin
         user = @uh.create_user(username, user_fields)
