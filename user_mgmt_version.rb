@@ -24,7 +24,7 @@
 
 class UserManagementVersion
 
-    VERSION = "0.52"
+    VERSION = "0.53"
 
     def revision
         return VERSION

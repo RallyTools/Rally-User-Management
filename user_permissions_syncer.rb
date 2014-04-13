@@ -139,7 +139,10 @@ def sync_permissions(header, row)
     return
   end
 
-  @logger.info "Syncing permissions from: #{source_user_name} to #{target_user_name}."
+  # @logger.info "Syncing WorkspacePermissions from: #{source_user_name} to #{target_user_name}."
+  # @uh.sync_workspace_permissions(source_user_name, target_user_name)
+
+  @logger.info "Syncing ProjectPermissions from: #{source_user_name} to #{target_user_name}."
   @uh.sync_project_permissions(source_user_name, target_user_name)
 
   target_user = @uh.refresh_user(target_user_name)
