@@ -61,8 +61,6 @@ $my_delim                 = "\t"
 my_vars= File.dirname(__FILE__) + "/../my_vars.rb"
 if FileTest.exist?( my_vars ) then require my_vars end
 
-puts $my_password
-
 $initial_fetch            = "UserName,FirstName,LastName,DisplayName"
 $standard_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
 $extended_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships,LastLoginDate,Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation"
