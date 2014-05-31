@@ -149,3 +149,24 @@ $upgrade_only_mode                  = false
 # $file_encoding = 'US-ASCII'
 # $file_encoding = 'UTF-8'
 $file_encoding                      = 'UTF-8'
+
+# Parameter:
+# $logger_mode
+#
+# Scripts Using this Parameter:
+# simple_user_loader.rb
+# update_user_attributes.rb
+# user_helper.rb
+# user_permissions_loader.rb
+# user_permissions_summary.rb
+# user_permissions_syncer.rb
+# user_permissions_template_generator.rb
+# user_team_membership_summary.rb
+#
+# Description
+# Specifies whether to send log output to stdout AND log, or to file only
+# Valid Settings (examples):
+#
+# $logger_mode = :stdout
+# $logger_mode = :file
+$logger_mode                        = :stdout
