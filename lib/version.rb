@@ -25,7 +25,7 @@
 module RallyUserManagement
     class Version
 
-        VERSION = "0.5.5"
+        VERSION = "0.5.6"
 
         def revision
             return VERSION
