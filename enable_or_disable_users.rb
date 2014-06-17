@@ -20,8 +20,9 @@
 
 #include for rally json library gem
 require 'rally_api'
-require 'rally_user_management'
 require 'csv'
+require './lib/multi_io.rb'
+require './lib/rally_user_helper.rb'
 require './lib/go_enable_or_disable_users.rb'
 
 # Constants

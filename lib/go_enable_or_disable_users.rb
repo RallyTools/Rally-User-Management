@@ -21,9 +21,12 @@
 
 # Usage to enable: ruby enable_or_disable_users.rb enable
 # Usage to disable: ruby enable_or_disable_users.rb disable
+fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
-require 'rally_user_management'
+require fileloc + '/rally_user_helper.rb'
+require fileloc + '/multi_io.rb'
+require fileloc + '/version.rb'
 require 'csv'
 
 $my_base_url                   = "https://rally1.rallydev.com/slm"

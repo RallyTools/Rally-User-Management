@@ -25,8 +25,12 @@
 # Delimited list of user permissions:
 # $user_synclist_filename    = 'user_sync_list.txt'
 
+fileloc = File.dirname(__FILE__)
+
 require 'rally_api'
-require 'rally_user_management'
+require fileloc + '/rally_user_helper.rb'
+require fileloc + '/multi_io.rb'
+require fileloc + '/version.rb'
 require 'csv'
 require 'logger'
 
@@ -70,8 +74,15 @@ $user_create_delay                  = 0 # seconds buffer time after creating use
 $max_cache_age                      = 1
 
 # Flag specifying whether to sync team memberships along with
-# user permissions
+# project permissions
 $sync_team_memberships              = true
+
+# Flag specifying whether to sync project permissions
+$sync_project_permissions           = true
+
+# Flag specifying whether to sync workspace permissions along with
+# project permissions
+$sync_workspace_permissions         = false
 
 # upgrade_only_mode - when running in upgrade_only_mode, check existing permissions
 # first, and only apply the change if it represents an upgrade over existing permissions
@@ -124,11 +135,15 @@ def sync_permissions(header, row)
     return
   end
 
-  # @logger.info "Syncing WorkspacePermissions from: #{source_user_name} to #{target_user_name}."
-  # @uh.sync_workspace_permissions(source_user_name, target_user_name)
+  if $sync_project_permissions then
+    @logger.info "Syncing ProjectPermissions from: #{source_user_name} to #{target_user_name}."
+    @uh.sync_project_permissions(source_user_name, target_user_name)
+  end
 
-  @logger.info "Syncing ProjectPermissions from: #{source_user_name} to #{target_user_name}."
-  @uh.sync_project_permissions(source_user_name, target_user_name)
+  if $sync_workspace_permissions then
+    @logger.info "Syncing WorkspacePermissions from: #{source_user_name} to #{target_user_name}."
+    @uh.sync_workspace_permissions(source_user_name, target_user_name)
+  end
 
   target_user = @uh.refresh_user(target_user_name)
   if $sync_team_memberships then

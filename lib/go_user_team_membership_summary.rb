@@ -22,9 +22,12 @@
 ########################################################################
 util_name = "user_team_membership_summary"
 ########################################################################
+fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
-require 'rally_user_management'
+require fileloc + '/rally_user_helper.rb'
+require fileloc + '/multi_io.rb'
+require fileloc + '/version.rb'
 require 'csv'
 require 'logger'
 

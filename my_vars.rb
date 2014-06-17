@@ -98,7 +98,7 @@ $summarize_enabled_only     = true
 # Valid Settings:
 # $sync_team_memberships = true
 # $sync_team_memberships = false
-$sync_team_memberships              = false
+$sync_team_memberships              = true
 
 # Parameter:
 # $sync_workspace_permissions
@@ -113,7 +113,7 @@ $sync_team_memberships              = false
 # Valid Settings:
 # $sync_workspace_permissions = true
 # $sync_workspace_permissions = false
-$sync_workspace_permissions         = true
+$sync_workspace_permissions         = false
 
 # Parameter:
 # $sync_project_permissions
@@ -128,7 +128,7 @@ $sync_workspace_permissions         = true
 # Valid Settings:
 # $sync_project_permissions = true
 # $sync_project_permissions = false
-$sync_project_permissions           = false
+$sync_project_permissions           = true
 
 # Parameter:
 # $upgrade_only_mode

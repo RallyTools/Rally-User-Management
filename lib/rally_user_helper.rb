@@ -1003,6 +1003,127 @@ module RallyUserManagement
       @logger.info "#{number_new_permissions} Permissions Created; #{number_updated_permissions} Permissions Updated; #{number_removed_permissions} Permissions Removed."
     end
 
+    # Mirrors WorkspacePermission set from a source user to a target user
+    def sync_workspace_permissions(source_user_id, target_user_id)
+      source_user = find_user(source_user_id)
+      target_user = find_user(target_user_id)
+      if source_user.nil? then
+        @logger.warn "  Source user: #{source_user_id} Not found. Skipping sync of permissions to #{target_user_id}."
+        return
+      elsif target_user.nil then
+        @logger.warn "  Target user: #{target_user_id} Not found. Skipping sync of permissions for #{target_user_id}."
+      end
+
+      permissions_existing = target_user.UserPermissions
+      source_permissions = source_user.UserPermissions
+
+      # build permission hashes by Workspace ObjectID
+      source_permissions_by_workspace = {}
+      source_permissions.each do | this_source_permission |
+        if this_source_permission._type == "WorkspacePermission" then
+          source_permissions_by_workspace[this_source_permission.Workspace.ObjectID.to_s] = this_source_permission
+        end
+      end
+
+      permissions_existing_by_workspace = {}
+      permissions_existing.each do | this_permission |
+        if this_permission._type == "WorkspacePermission" then
+          permissions_existing_by_workspace[this_permission.Workspace.ObjectID.to_s] = this_permission
+        end
+      end
+
+      # Prepare arrays of permissions to update, create, or delete
+      permissions_to_update = []
+      permissions_to_create = []
+      permissions_to_delete = []
+
+      # Check target permissions list for permissions to create and/or update
+      source_permissions_by_workspace.each_pair do | this_source_workspace_oid, this_source_permission |
+
+        # If target hash doesn't contain the OID referenced in the source permission set, it's a new
+        # permission we need to create
+        if !permissions_existing_by_workspace.has_key?(this_source_workspace_oid) then
+          permissions_to_create.push(this_source_permission)
+
+        # We found the OID key, so there is an existing permission for this Workspace. Is it different
+        # from the target permission?
+        else
+          this_source_role = this_source_permission.Role
+          this_source_workspace = find_workspace(this_source_workspace_oid)
+          this_source_workspace_name = this_source_workspace["Name"]
+
+          if workspace_permissions_different?(this_source_workspace, target_user, this_source_role) then
+            existing_permission = permissions_existing_by_workspace[this_source_workspace_oid]
+            this_existing_workspace = existing_permission.Workspace
+            this_existing_workspace_name = this_existing_workspace["Name"]
+            this_existing_role = existing_permission.Role
+            @logger.info "Existing Permission: #{this_existing_workspace_name}: #{this_existing_role}"
+            @logger.info "Updated Permission: #{this_source_workspace_name}: #{this_source_role}"
+            permissions_to_update.push(this_source_permission)
+          end
+        end
+      end
+
+      # Loop through target permissions list and check for Workspace Permissions that don't exist
+      # in source permissions template, indicating they need to be removed
+      permissions_existing_by_workspace.each_pair do | this_existing_workspace_oid, this_existing_permission |
+        if !source_permissions_by_workspace.has_key?(this_existing_workspace_oid) then
+          permissions_to_delete.push(this_existing_permission)
+        end
+      end
+
+      # Process creates
+      number_new_permissions = 0
+      permissions_to_create.each do | this_new_permission |
+        this_workspace = find_workspace(this_new_permission.Workspace.ObjectID.to_s)
+        if !this_workspace.nil? then
+          this_workspace_name = this_workspace["Name"]
+          this_role = this_new_permission.Role
+
+          @logger.info "Workspace: #{this_workspace_name}"
+          @logger.info "Creating #{this_role} permission on #{this_workspace_name} from #{source_user_id} to: #{target_user_id}."
+          create_workspace_permission(target_user, this_workspace, this_role)
+          number_new_permissions += 1
+        end
+      end
+
+      # Process updates
+      number_updated_permissions = 0
+      permissions_to_update.each do | this_new_permission |
+        this_workspace = find_workspace(this_new_permission.Workspace.ObjectID.to_s)
+        if !this_workspace.nil? then
+          this_workspace_name = this_workspace["Name"]
+          this_role = this_new_permission.Role
+
+          @logger.info "Workspace: #{this_workspace_name}"
+          @logger.info "Updating #{this_role} permission on #{this_workspace_name} from #{source_user_id} to: #{target_user_id}."
+          create_workspace_permission(target_user, this_workspace, this_role)
+          number_updated_permissions += 1
+        end
+      end
+
+      # Process deletes
+      number_removed_permissions = 0
+      permissions_to_delete.each do | this_deleted_permission |
+        this_workspace = find_workspace(this_deleted_permission.Workspace.ObjectID.to_s)
+        if !this_workspace.nil? then
+          this_workspace_name = this_workspace["Name"]
+          this_role = this_deleted_permission.Role
+
+          @logger.info "Workspace: #{this_workspace_name}"
+          @logger.info "Removing #{this_role} permission to #{this_workspace_name} from #{target_user_id} since it is not present on source: #{source_user_id}."
+          if !@upgrade_only_mode then
+            delete_workspace_permission(target_user, this_workspace)
+            number_removed_permissions += 1
+          else
+            @logger.info "  #{target_user_id} - upgrade_only_mode == true."
+            @logger.info "  Proposed Permission removal would downgrade permissions. No permission removal applied."
+          end
+        end
+      end
+      @logger.info "#{number_new_permissions} Permissions Created; #{number_updated_permissions} Permissions Updated; #{number_removed_permissions} Permissions Removed."
+    end
+
       # Mirrors team membership set from a source user to a target user
     def sync_team_memberships(source_user_id, target_user_id)
       source_user = find_user(source_user_id)

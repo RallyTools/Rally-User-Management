@@ -19,8 +19,12 @@
 # THE SOFTWARE.
 
 #include for rally json library gem
+fileloc = File.dirname(__FILE__)
+
 require 'rally_api'
-require 'rally_user_management'
+require fileloc + '/rally_user_helper.rb'
+require fileloc + '/multi_io.rb'
+require fileloc + '/version.rb'
 require 'csv'
 
 #Setting custom headers
@@ -60,8 +64,6 @@ $my_delim                 = "\t"
 # Load (and maybe override with) my personal/private variables from a file...
 my_vars= File.dirname(__FILE__) + "/../my_vars.rb"
 if FileTest.exist?( my_vars ) then require my_vars end
-
-puts $my_password
 
 $initial_fetch            = "UserName,FirstName,LastName,DisplayName"
 $standard_detail_fetch    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"

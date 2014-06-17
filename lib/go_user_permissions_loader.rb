@@ -26,11 +26,14 @@
 
 # Delimited list of user permissions:
 # $permissions_filename    = 'user_permissions_loader.txt'
+fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
+require fileloc + '/rally_user_helper.rb'
+require fileloc + '/multi_io.rb'
+require fileloc + '/version.rb'
 require 'csv'
 require 'logger'
-require 'rally_user_management'
 
 # User-defined variables
 $my_base_url                        = "https://rally1.rallydev.com/slm"

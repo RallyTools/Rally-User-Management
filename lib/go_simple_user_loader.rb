@@ -26,9 +26,12 @@
 
 # Delimited list of user attributes/permissions:
 # $input_filename    = 'simple_user_loader.txt'
+fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
-require 'rally_user_management'
+require fileloc + '/rally_user_helper.rb'
+require fileloc + '/multi_io.rb'
+require fileloc + '/version.rb'
 require 'csv'
 require 'logger'
 
