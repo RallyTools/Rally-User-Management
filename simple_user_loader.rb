@@ -20,8 +20,9 @@
 
 #include for rally json library gem
 require 'rally_api'
-require 'rally_user_management'
 require 'csv'
+require './lib/multi_io.rb'
+require './lib/rally_user_helper.rb'
 require './lib/go_simple_user_loader.rb'
 
 $input_filename_arg = ARGV[0]
