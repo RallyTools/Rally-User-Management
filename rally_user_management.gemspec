@@ -22,4 +22,6 @@ Gem::Specification.new do | spec |
   spec.homepage    =
     'http://rubygems.org/gems/rally_user_management'
   spec.license       = 'MIT'
+  spec.has_rdoc      = false
+
 end
