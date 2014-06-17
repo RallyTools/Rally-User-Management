@@ -20,8 +20,9 @@
 
 #include for rally json library gem
 require 'rally_api'
-require 'rally_user_management'
 require 'csv'
+require './lib/multi_io.rb'
+require './lib/rally_user_helper.rb'
 require './lib/go_user_permissions_syncer.rb'
 
 $user_synclist_filename_arg = ARGV[0]
