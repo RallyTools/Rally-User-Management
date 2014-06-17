@@ -1,4 +1,4 @@
-$my_username                = 'subadmin@company.com'
+$my_username                = 'user@company.com'
 $my_password                = 'topsecret'
 $my_base_url                = 'https://rally1.rallydev.com/slm'
 
@@ -98,7 +98,37 @@ $summarize_enabled_only     = true
 # Valid Settings:
 # $sync_team_memberships = true
 # $sync_team_memberships = false
-$sync_team_memberships              = true
+$sync_team_memberships              = false
+
+# Parameter:
+# $sync_workspace_permissions
+#
+# Scripts Using this Parameter:
+# user_permissions_syncer.rb
+#
+# Description:
+# Synchronizes Workspace permissions between source and target users, in addition
+# to project permissions, when true
+#
+# Valid Settings:
+# $sync_workspace_permissions = true
+# $sync_workspace_permissions = false
+$sync_workspace_permissions         = true
+
+# Parameter:
+# $sync_project_permissions
+#
+# Scripts Using this Parameter:
+# user_permissions_syncer.rb
+#
+# Description:
+# Synchronizes Project permissions between source and target users, in addition
+# to project permissions, when true
+#
+# Valid Settings:
+# $sync_project_permissions = true
+# $sync_project_permissions = false
+$sync_project_permissions           = false
 
 # Parameter:
 # $upgrade_only_mode
@@ -124,7 +154,7 @@ $sync_team_memberships              = true
 # Valid Settings:
 # $upgrade_only_mode = true
 # $upgrade_only_mode = false
-$upgrade_only_mode                  = false
+$upgrade_only_mode                  = true
 
 # Parameter:
 # $file_encoding
