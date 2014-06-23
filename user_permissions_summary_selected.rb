@@ -126,6 +126,9 @@ def is_team_member(project_oid, team_memberships)
 end
 
 def summarize_user(header, row)
+    
+    # Array to store permissions records for each user
+    output_arr = []
 
     # Username field is the only required field
     username_field               = row[header[0]]
@@ -153,12 +156,11 @@ def summarize_user(header, row)
     number_found = user_query_results.total_result_count
     if number_found > 0 then
         this_user = user_query_results.first
-
+        
         # Summarize where we are in processing
-        puts "Summarizing permissions for #{this_user_name}"
-
         user_permissions = this_user.UserPermissions
-        user_permissions.each do |this_permission|
+        puts "Summarizing permissions for #{this_user_name}"
+        user_permissions.each do | this_permission |
 
             # Set default for team membership
             team_member = "No"
@@ -224,7 +226,7 @@ def summarize_user(header, row)
                 output_record << this_user.Department
                 output_record << this_user.OfficeLocation
             end
-            return output_record
+            output_arr.push(output_record)
         end
         if user_permissions.length == 0
             output_record = []
@@ -247,13 +249,15 @@ def summarize_user(header, row)
                 output_record << this_user.Department
                 output_record << this_user.OfficeLocation
             end
-            return output_record
+            output_arr.push(output_record)
         end
         # User not found in follow-up detail Query - skip this user
     else
         puts "User: #{this_user_name} not found in Rally query. Skipping..."
-        return nil
+        return output_arr
     end
+    
+    return output_arr
 
 end
 
@@ -311,9 +315,11 @@ begin
   (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
 
   rows.each do |row|
-      user_permissions_record = summarize_user(header, row)
-      if !user_permissions_record.nil? then
-          summary_csv << user_permissions_record
+      user_permissions_arr = summarize_user(header, row)
+      if user_permissions_arr.length > 0 then
+        user_permissions_arr.each do | this_permission_record |          
+            summary_csv << this_permission_record
+        end
       end
   end
 
