@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,11 +20,11 @@
 
 # encoding: UTF-8
 
-# Usage: ruby user_permissions_loader.rb user_permissions_loader.txt
+# Usage: ruby update_user_attributes.rb update_user_attributes.txt
 # Expected input files are defined as global variables below
 
-# Delimited list of user permissions:
-# $permissions_filename    = 'user_permissions_loader.txt'
+# Delimited list of user attributes:
+# $input_filename    = 'update_user_attributes.txt'
 
 require 'rally_api'
 require './user_mgmt_version'
@@ -39,23 +38,23 @@ $my_base_url                        = "https://rally1.rallydev.com/slm"
 $my_username                        = "user@company.com"
 $my_password                        = "password"
 
-$permissions_filename = ARGV[0]
+# Encoding
+$file_encoding                     = "US-ASCII"
 
-if $permissions_filename == nil
+$input_filename = ARGV[0]
+
+if $input_filename == nil
 # This is the default of the file to be used for uploading user permissions
-  $permissions_filename             = 'user_permissions_loader.txt'
+  $input_filename             = 'update_user_attributes_template.txt'
 end
 
-if File.exists?(File.dirname(__FILE__) + "/" + $permissions_filename) == false
-  puts "User permissions loader file #{$permissions_filename} not found. Exiting."
+if File.exists?(File.dirname(__FILE__) + "/" + $input_filename) == false
+  puts "User attributes updater file #{$input_filename} not found. Exiting."
   exit
 end
 
 # Field delimiter for permissions file
 $my_delim                           = "\t"
-
-# Encoding
-$file_encoding                      = "US-ASCII"
 
 
 # Note: When creating or updating many users, pre-fetching UserPermissions
@@ -69,7 +68,7 @@ $enable_cache                       = true
 #Setting custom headers
 @user_mgmt_version                  = UserManagementVersion.new()
 $headers                            = RallyAPI::CustomHttpHeader.new()
-$headers.name                       = "Ruby User Management Tool 2::User Permissions Loader"
+$headers.name                       = "Ruby User Management Tool 2::Update User Attributes"
 $headers.vendor                     = "Rally Labs"
 $headers.version                    = @user_mgmt_version.revision()
 
@@ -90,44 +89,52 @@ $max_cache_age                      = 1
 # first, and only apply the change if it represents an upgrade over existing permissions
 $upgrade_only_mode                  = false
 
-# Maximum parameters for Workspaces/Projects/User Updates to process
+# Maximum parameters for Workspaces/Projects to process
 $max_workspaces                     = 100000
 $max_projects                       = 100000
-$max_user_updates                   = 100000
 
 # Limited load mode for testing - triggers circuit-breaker if true
 $test_mode                          = false
+
 
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
 
 #Setup Role constants
-$ADMIN          = 'Admin'
-$USER           = 'User'
-$PROJECTADMIN   = "Admin"
-$EDITOR         = 'Editor'
-$VIEWER         = 'Viewer'
-$NOACCESS       = 'No Access'
+$ADMIN = 'Admin'
+$USER = 'User'
+$EDITOR = 'Editor'
+$VIEWER = 'Viewer'
+$NOACCESS = 'No Access'
 $TEAMMEMBER_YES = 'Yes'
-$TEAMMEMBER_NO  = 'No'
+$TEAMMEMBER_NO = 'No'
 
-#Setup constants
-$workspace_permission_type          = "WorkspacePermission"
-$project_permission_type            = "ProjectPermission"
+# Permission types
+$type_workspacepermission        = "WorkspacePermission"
+$type_projectpermission          = "ProjectPermission"
 
-def update_permission(header, row)
+def strip_role_from_permission(str)
+    # Removes the role from the Workspace,ProjectPermission String so we're left with just the
+    # Workspace/Project Name
+    str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
+end
+
+def update_attributes(header, row)
 
   # LastName, FirstName, DisplayName, WorkspaceName are optional fields
   username_field               = row[header[0]]
   last_name_field              = row[header[1]]
   first_name_field             = row[header[2]]
   display_name_field           = row[header[3]]
-  permission_type_field        = row[header[4]]
-  workspace_name_field         = row[header[5]]
-  workspace_project_name_field = row[header[6]]
-  permission_level_field       = row[header[7]]
-  team_member_field            = row[header[8]]
-  object_id_field              = row[header[9]]
+  role_field                   = row[header[4]]
+  office_location_field        = row[header[5]]
+  department_field             = row[header[6]]
+  cost_center_field            = row[header[7]]
+  phone_field                  = row[header[8]]
+  network_id_field             = row[header[9]]
+  default_workspace_field      = row[header[10]]
+  default_project_field        = row[header[11]]
+  timezone_field               = row[header[12]]
 
   # Check to see if any required fields are nil
   required_field_isnil = false
@@ -139,36 +146,6 @@ def update_permission(header, row)
   else
     # Downcase - Rally's WSAPI lookup finds user based on lower-case UserID
     username = username_field.strip.downcase
-  end
-  if permission_type_field.nil? then
-    required_field_isnil = true
-    required_nil_fields += " PermissionType"
-  else
-    permission_type = permission_type_field.strip
-  end
-  if workspace_project_name_field.nil? then
-    required_field_isnil = true
-    required_nil_fields += " Workspace/ProjectName"
-  else
-    workspace_project_name = workspace_project_name_field.strip
-  end
-  if permission_level_field.nil? then
-    required_field_isnil = true
-    required_nil_fields += " PermissionLevel"
-  else
-    permission_level = permission_level_field.strip
-  end
-  if team_member_field.nil? then
-    required_field_isnil = true
-    required_nil_fields += " TeamMember"
-  else
-    team_member = team_member_field.strip
-  end
-  if object_id_field.nil? then
-    required_field_isnil = true
-    required_nil_fields += " ObjectID"
-  else
-    object_id = object_id_field.strip
   end
 
   if required_field_isnil then
@@ -196,83 +173,162 @@ def update_permission(header, row)
     user_fields["DisplayName"] = display_name
   end
 
-  if !workspace_project_name_field.nil? then
-    workspace_project_name = workspace_project_name_field.strip
-  else
-    workspace_project_name = "N/A"
+  if !role_field.nil? then
+    role = role_field.strip
+    user_fields["Role"] = role
+  end
+
+  if !office_location_field.nil? then
+    office_location = office_location_field.strip
+    user_fields["OfficeLocation"] = office_location
+  end
+
+  if !department_field.nil? then
+    department = department_field.strip
+    user_fields["Department"] = department
+  end
+
+  if !cost_center_field.nil? then
+    cost_center = cost_center_field.strip
+    user_fields["CostCenter"] = cost_center
+  end
+
+  if !phone_field.nil? then
+    phone = phone_field.strip
+    user_fields["Phone"] = phone
+  end
+
+  if !network_id_field.nil? then
+    network_id = network_id_field.strip
+    user_fields["NetworkID"] = network_id
+  end
+
+  need_profile_update = false
+  if !default_workspace_field.nil? then
+    default_workspace_name = default_workspace_field.strip
+    need_default_workspace_update = true
+  end
+
+  if !default_project_field.nil? then
+    default_project_name = default_project_field.strip
+    need_default_project_update = true
+  end
+
+  if !timezone_field.nil? then
+    timezone = timezone_field.strip
+    need_timezone_update = true
   end
 
   # look up user
-  user = @uh.find_user(username)
+  user         = @uh.find_user(username)
 
-  # Create User if they do not exist
-  # Warning: if you opt to allow new user creation as part of the script:
-  # New users are created with one default WorkspacePermission and one default ProjectPermission, per the following rules:
-  # This newly created user will have Workspace User and Project Viewer permissions according to the script user's default workspace and project.
-  # If no default workspace or project is set, the first open project will be chosen alphabetically.
-  # The workspace associated with that project will be chosen as the current default workspace.
+  #update user if they exist
 
-  # Check user-level update circuit breaker
-  if username.eql?($prev_user)
-    $user_update_count += 1
-    if $test_mode && $user_update_count > $max_user_updates then
-      @logger.info "  TEST MODE: Breaking user updates at maximum of #{$max_user_updates}."
-      return
-    end
-  else
-    # New user, start counter over
-    $user_update_count = 0
-  end
-
-  #create user if they do not exist
   if user == nil
-    @logger.info "User #{username} does not yet exist. Creating..."
+    @logger.info "User #{username} does not exist. Cannot update attributes..."
+    return
+  else
+    # Update attributes on User Object
     begin
-        user = @uh.create_user(username, user_fields)
-        sleep $user_create_delay
-        new_user = true
+        @uh.update_user(user, user_fields)
+        @uh.refresh_user(user["UserName"])
+        @logger.info "Updated User."
     rescue => ex
-        @logger.error "Cound not create user #{username}."
-        @logger.error "NOTE: Workspace Admins must be granted permissions to create Users in order to run this script to setup new users."
+        @logger.error "Could not update user #{username}."
+        @logger.error "   NOTE: Specified input values for Department,CostCenter, etc. MUST match valid values for these fields as defined in the Subscription."
+        @logger.error "   NOTE: Workspace Admins must be granted permissions to create Users in order to run this script to adjust user attributes."
         @logger.error ex
         return
     end
-  end
 
-  # Update Workspace Permission if row type is WorkspacePermission
-  if permission_type == "WorkspacePermission"
+    # Update attributes on UserProfile Object
+    if need_default_workspace_update && need_default_project_update then
+      user_profile = user["UserProfile"]
+      user_profile.read
 
-    workspace = @uh.find_workspace(object_id)
-    if workspace != nil then
-      @uh.update_workspace_permissions(workspace, user, permission_level, new_user)
-    else
-      @logger.error "Workspace #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this workspace."
+      # Construct refs for Default Workspace Project
+      default_workspace = @uh.find_workspace_by_name(default_workspace_name)
+      default_project   = @uh.find_project_by_name(default_project_name)
+
+      if default_workspace.nil? then
+        @logger.warn "    Default Workspace: #{default_workspace} Not found. Skipping update."
+        return
+      end
+
+      if default_project.nil? then
+        @logger.warn "    Default Project: #{default_project} Not found. Skipping update."
+        return
+      end
+
+      # Check to see if default project is in the default workspace
+      is_project_in_workspace = @uh.is_project_in_workspace(default_project, default_workspace)
+
+      # Believe it or not WSAPI will let you set Default Workspace/Project attributes in
+      # Workspaces/Projects where you have no permissions. Let's trap that.
+      default_workspace_permission_exists = @uh.does_user_have_workspace_permission?(default_workspace, user)
+      default_project_permission_exists = @uh.does_user_have_project_permission?(default_project, user)
+
+      # Check multiple conditions needed to update Default Workspace/Project
+      failed_reason = ""
+      conditions_met = true
+      if !is_project_in_workspace then
+        conditions_met = false
+        failed_reason += "   Default Project #{default_project_name} is not in Workspace: #{default_workspace_name}.\n"
+      end
+
+      if default_workspace.nil? then
+        conditions_met = false
+        failed_reason += "   Cannot find Default Workspace: #{default_workspace_name}\n"
+      end
+
+      if default_project.nil? then
+        conditions_met = false
+        failed_reason +=  "  Cannot find Default Project: #{default_project_name}"
+      end
+
+      if !default_workspace_permission_exists || !default_project_permission_exists then
+        conditions_met = false
+        failed_reason += "   User must have Permissions in both Default Workspace and Default Project."
+      end
+
+      if conditions_met then
+        begin
+          user_profile_fields = {
+            "DefaultWorkspace" => default_workspace["_ref"],
+            "DefaultProject"   => default_project["_ref"]
+          }
+          user_profile.update(user_profile_fields)
+          @logger.info "Updated #{username} with Default Workspace: #{default_workspace_name} / Default Project: #{default_project_name}"
+        rescue => ex
+          @logger.error "Could not update user profile settings for Workspace/Project on User: #{username}."
+          @logger.error ex
+        end
+      else
+        @logger.warn "  Problem occurred setting Default Workspace/Project."
+        @logger.warn failed_reason
+        @logger.warn " Default Workspace/Project not set!"
+      end
+    end
+
+    if need_timezone_update then
+      begin
+
+        # Check for "Default" as Timezone value
+        if timezone.eql?("Default") then
+          timezone = nil
+        end
+
+        user_profile_fields = {
+          "TimeZone" => timezone
+        }
+        user_profile.update(user_profile_fields)
+        @logger.info "Update #{username} with TimeZone: #{timezone}"
+      rescue => ex
+        @logger.error "Could not update user profile settings for TimeZone on User: #{username}."
+        @logger.error ex
+      end
     end
   end
-
-  # Update Project Permission if row type is ProjectPermission
-  # Warning: note this will error out if this is a new ProjectPermission within a
-  # Workspace for which there is no existing WorkspacePermission for the user
-  if permission_type == "ProjectPermission"
-
-    project = @uh.find_project(object_id)
-    if project != nil then
-      @uh.update_project_permissions(project, user, permission_level, new_user)
-    else
-      @logger.error "Project #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this project."
-    end
-
-    # Update Team Membership (Only applicable for Editor or Admin Permissions at Project level)
-    if permission_level == $EDITOR || permission_level == $PROJECTADMIN then
-      @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
-    elsif permission_level == $VIEWER && team_member == $TEAMMEMBER_YES then
-      @logger.info "  Permission level: #{permission_level}, Team Member: #{team_member}. #{$EDITOR} or #{$PROJECTADMIN} Permission needed to be " + \
-         "Team Member. No Team Membership update: N/A."
-    else
-        @logger.info "  No Team Membership update: N/A."\
-    end
-  end
-  $prev_user = username
 end
 
 begin
@@ -281,7 +337,7 @@ begin
   my_vars= File.dirname(__FILE__) + "/my_vars.rb"
   if FileTest.exist?( my_vars ) then require my_vars end
 
-  log_file = File.open("user_permissions_loader.log", "a")
+  log_file = File.open("update_user_attributes.log", "a")
   @logger = Logger.new MultiIO.new(STDOUT, log_file)
 
   @logger.level = Logger::INFO #DEBUG | INFO | WARNING | FATAL
@@ -330,30 +386,29 @@ begin
     @uh.read_workspace_project_cache()
   end
 
+  # User Permissions cache
+  $user_permissions_cache = {}
+
   # Caching Users can help performance if we're doing updates for a lot of users
   if $enable_user_cache
     @logger.info "Caching user list..."
     @uh.cache_users()
+    $user_permissions_cache = @uh.get_cached_users()
   end
 
-  input  = CSV.read($permissions_filename, {:col_sep => $my_delim, :encoding => $file_encoding})
+  # Workspace and Project caches
+  $open_workspaces = @uh.get_cached_workspaces()
+  $open_projects = @uh.get_workspace_project_hash()
+
+  input  = CSV.read($input_filename, {:col_sep => $my_delim, :encoding => $file_encoding})
 
   header = input.first #ignores first line
-
-  $workspace_count = 0
-  $project_count = 0
 
   rows   = []
   (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
 
-  # Set prev_user to be "N/A"
-  # set $user_update_count = 0
-  # (These params are used for test/circuit-breaking)
-  $prev_user = "N/A"
-  $user_update_count = 0
-
   rows.each do |row|
-    update_permission(header, row)
+    update_attributes(header, row)
   end
 
   log_file.close

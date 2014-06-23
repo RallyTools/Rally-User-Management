@@ -1,0 +1,6 @@
+UserID	LastName	FirstName	DisplayName	DefaultPermissions	Role	OfficeLocation	Department	CostCenter	Phone	NetworkID
+user5@company.com	Five	User	User Five	aragorn@midearth.com	Scrum Master	Denver	R&D	R&D	303-555-1212	user5
+user6@company.com	Six	User	User Six	boromir@midearth.com	Developer	Boulder	Horizon3 Initiatives	R&D	303-555-1414	user8
+user7@company.com	Seven	User	User Seven	None	DevOps	Denver	Operations	Operations	720-555-1414	user7
+user8@company.com	Eight	User	User Eight	Editor						
+user9@company.com	Nine	User	User Nine	Viewer	Support Analyst	Kirkland	Support	Operations	425-555-1212	user9

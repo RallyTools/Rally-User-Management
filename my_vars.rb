@@ -99,3 +99,53 @@ $summarize_enabled_only     = true
 # $sync_team_memberships = true
 # $sync_team_memberships = false
 $sync_team_memberships              = true
+
+# Parameter:
+# $upgrade_only_mode
+
+# Scripts Using this Parameter:
+# user_permissions_loader.rb
+
+# Description:
+# When running with $upgrade_only_mode == true, the script will check existing permissions before applying a change. It will then apply the change _only_ if the proposed permissions are an upgrade in comparison to existing permissions.
+
+# Example one:
+# Existing Permissions: Viewer
+# Proposed Permissions: Editor
+# Permission change occurs
+
+# Example two:
+# Existing Permissions: Editor
+# Proposed Permissions: Viewer
+# NO Permission change occurs
+
+# This is convenient when seeking to grant Viewer level access to all users, without downgrading existing editors, as an example
+
+# Valid Settings:
+# $upgrade_only_mode = true
+# $upgrade_only_mode = false
+$upgrade_only_mode                  = false
+
+# Parameter:
+# $file_encoding
+#
+# Scripts Using this Parameter:
+# change_usernames.rb
+# enable_or_disable_users.rb
+# ldap_username_load.rb
+# simple_user_loader.rb
+# update_user_attributes.rb
+# user_helper.rb
+# user_permissions_loader.rb
+# user_permissions_summary.rb
+# user_permissions_syncer.rb
+# user_permissions_template_generator.rb
+# user_team_membership_summary.rb
+#
+# Description
+# Sets character encoding to use when reading/writing files
+# Valid Settings (examples):
+#
+# $file_encoding = 'US-ASCII'
+# $file_encoding = 'UTF-8'
+$file_encoding                      = 'UTF-8'

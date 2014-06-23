@@ -1,4 +1,5 @@
-# Copyright (c) 2013 Rally Software Development
+# encoding: UTF-8
+# Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +33,9 @@ $my_password                   = "password"
 $default_filename              = 'users_enable_or_disable.txt'
 
 $wsapi_version                 = "1.43"
+
+# Encoding
+$file_encoding                 = "US-ASCII"
 
 # Constants
 $enable_flag                   = "enable"
@@ -112,7 +116,7 @@ begin
   $headers                = RallyAPI::CustomHttpHeader.new()
   $headers.name           = "Ruby User Management Tool 2::User Enabler-Disabler"
   $headers.vendor         = "Rally Labs"
-  $headers.version        = user_mgmt_version.revision()
+  $headers.version        = @user_mgmt_version.revision()
 
   config                  = {:base_url => $my_base_url}
   config[:username]       = $my_username
@@ -122,7 +126,7 @@ begin
 
   @rally = RallyAPI::RallyRestJson.new(config)
 
-  input  = CSV.read($userlist_filename)
+  input  = CSV.read($userlist_filename, {:encoding => $file_encoding})
   header = input.first #ignores first line
 
   rows   = []
