@@ -28,8 +28,8 @@ require './lib/go_user_permissions_summary.rb'
 $output_file_arg = ARGV[0]
 
 if $output_file_arg == nil
-# This is the default of the file to be used for uploading user permissions
-    $output_filename =  File.dirname(__FILE__) + "/" + 'user_permissions_loader.txt'
+# This is the default of the file to be used for output summary of user permissions
+    $output_filename =  File.dirname(__FILE__) + "/" + 'user_permissions_summary.txt'
 else
     $output_filename = File.dirname(__FILE__) + "/" + ARGV[0]
 end
