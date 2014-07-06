@@ -28,7 +28,7 @@ require './lib/go_user_permissions_syncer.rb'
 $user_synclist_filename_arg = ARGV[0]
 
 if $user_synclist_filename_arg == nil
-# This is the default of the file to be used for uploading user permissions
+# This is the default of the file to be used for syncing user permissions
   $user_synclist_filename             = 'user_sync_template.txt'
 else
   $user_synclist_filename             = File.dirname(__FILE__) + "/" + $user_synclist_filename_arg
