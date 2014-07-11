@@ -1,4 +1,4 @@
-$my_username                = 'user@company.com'
+$my_username                = 'subadmin@company.com'
 $my_password                = 'topsecret'
 $my_base_url                = 'https://rally1.rallydev.com/slm'
 
