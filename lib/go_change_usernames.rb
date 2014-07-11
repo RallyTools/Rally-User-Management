@@ -38,7 +38,7 @@ $wsapi_version                 = "1.43"
 $user_update_mode              = :usernameandemail
 
 # Encoding
-$file_encoding                 = "US-ASCII"
+$file_encoding                 = "UTF-8"
 
 def update_username(header, row)
   exist_username        = row[header[0]].strip

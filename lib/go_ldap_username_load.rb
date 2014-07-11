@@ -31,7 +31,7 @@ $rally_wsapi_version    = "1.33"
 $input_filename         = 'ldap_username_load_template.csv'
 
 # Encoding
-$file_encoding          = "US-ASCII"
+$file_encoding          = "UTF-8"
 
 def get_rally_users()
   user_query = RallyAPI::RallyQuery.new()

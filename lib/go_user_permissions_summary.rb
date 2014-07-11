@@ -46,7 +46,7 @@ $my_page_size           = 200
 $my_limit               = 50000
 
 # Encoding
-$file_encoding          = "US-ASCII"
+$file_encoding          = "UTF-8"
 
 # Mode options:
 # :standard => Outputs permission attributes only

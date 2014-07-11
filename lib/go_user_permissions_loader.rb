@@ -51,7 +51,7 @@ end
 $my_delim                           = "\t"
 
 # Encoding
-$file_encoding                      = "US-ASCII"
+$file_encoding                      = "UTF-8"
 
 # Note: When creating or updating many users, pre-fetching UserPermissions
 # can improve performance

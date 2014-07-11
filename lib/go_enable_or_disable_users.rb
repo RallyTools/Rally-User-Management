@@ -38,7 +38,7 @@ $default_filename              = 'users_enable_or_disable.txt'
 $wsapi_version                 = "1.43"
 
 # Encoding
-$file_encoding                 = "US-ASCII"
+$file_encoding                 = "UTF-8"
 
 # Constants
 $enable_flag                   = "enable"

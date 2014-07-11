@@ -70,7 +70,7 @@ $TEAMMEMBER_NA = 'N/A'
 $my_delim                     = "\t"
 
 # Encoding
-$file_encoding                = "US-ASCII"
+$file_encoding                = "UTF-8"
 
 # Preps output records to write to Permissions Template file
 def prep_record_for_export(input_record, type, input_user, permission, is_teammember)

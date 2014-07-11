@@ -76,7 +76,7 @@ module RallyUserManagement
       @upgrade_only_mode = config[:upgrade_only_mode] || false
 
       # File encoding format
-      @file_encoding = config[:file_encoding] || "US-ASCII"
+      @file_encoding = config[:file_encoding] || "UTF-8"
 
       # User filter for ENABLED users only
       # For purposes of speed/efficiency, summarize Enabled Users ONLY

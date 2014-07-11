@@ -41,7 +41,7 @@ $my_username                        = "user@company.com"
 $my_password                        = "password"
 
 # Encoding
-$file_encoding                      = "US-ASCII"
+$file_encoding                      = "UTF-8"
 
 # Field delimiter for permissions file
 $my_delim                           = "\t"

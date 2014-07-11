@@ -58,7 +58,7 @@ $headers.version            = @user_mgmt_version.revision()
 $wsapi_version              = "1.43"
 
 # Encoding
-$file_encoding              = "US-ASCII"
+$file_encoding              = "UTF-8"
 
 
 def go_user_team_membership_summary(output_file)
