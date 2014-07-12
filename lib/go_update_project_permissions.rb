@@ -96,7 +96,7 @@ def is_workspace_admin(user, project)
         if this_permission._type == "WorkspacePermission" then
             if this_permission.Workspace.ObjectID.to_s == this_workspace_oid then
                 permission_level = this_permission.Role
-                if permission_level == "ADMIN" then
+                if permission_level == $ADMIN then
                     is_admin = true
                     break
                 end
