@@ -1475,32 +1475,10 @@ module RallyUserManagement
       end
     end
 
-    def reread(json_object, params = {})
-        args = { :method => :get }
-
-        #json_response = @rally_connection.read_object(json_object["_ref"], args, params)
-        json_response = @rally_json_connection.send_request(json_object["_ref"], args, params)
-        rally_type = json_response.keys[0]
-        json_response[rally_type]
-    end
-
-    def read_collection(collection_hash, params = {})
-        collection_count = collection_hash['Count']
-        start = 1
-        pagesize = params[:pagesize] || 200
-        full_collection = []
-        start.step(collection_count, pagesize).each do |page_start|
-            page = reread(collection_hash, {:pagesize => 200, :startindex => page_start})
-            full_collection.concat(page["Results"])
-        end
-        {"Results" => full_collection}
-    end
-
     # Gets a list of users for a specified project.
     # Note - this utilizes un-documented and un-supported Rally endpoint
     # that is not part of WSAPI REST it also digs down into rally_api to
     # directly GET against this endpoint. Not guaranteed to work forever
-
     def get_project_users(project_oid)
         project_users_url = make_project_users_url(project_oid)
         args = {:method => :get}
