@@ -205,8 +205,8 @@ def summarize_user(header, row)
             output_record << team_member
             output_record << object_id
             if $summary_mode == :extended then
-                output_record << this_user.LastLoginDate
                 output_record << this_user.Disabled
+                output_record << this_user.LastLoginDate
                 output_record << this_user.NetworkID
                 output_record << this_user.Role
                 output_record << this_user.CostCenter
@@ -228,8 +228,8 @@ def summarize_user(header, row)
             output_record << "N/A"
             output_record << "N/A"
             if $summary_mode == :extended then
-                output_record << this_user.LastLoginDate
                 output_record << this_user.Disabled
+                output_record << this_user.LastLoginDate
                 output_record << this_user.NetworkID
                 output_record << this_user.Role
                 output_record << this_user.CostCenter

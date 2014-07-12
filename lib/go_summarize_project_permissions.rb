@@ -199,9 +199,9 @@ def summarize_user(this_user, project)
     output_record << this_user_role
     output_record << team_member
     output_record << project_oid
+    output_record << this_user.Disabled
     if $summary_mode == :extended then
         output_record << this_user.LastLoginDate
-        output_record << this_user.Disabled
         output_record << this_user.NetworkID
         output_record << this_user.Role
         output_record << this_user.CostCenter
