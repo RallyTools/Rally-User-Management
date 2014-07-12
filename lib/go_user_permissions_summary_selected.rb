@@ -54,6 +54,9 @@ $my_output_file           = "user_permissions_summary_selected.txt"
 $input_delim              = ","
 $output_delim             = "\t"
 
+# Encoding
+$file_encoding          = "UTF-8"
+
 # Load (and maybe override with) my personal/private variables from a file...
 my_vars= File.dirname(__FILE__) + "/../my_vars.rb"
 if FileTest.exist?( my_vars ) then require my_vars end
@@ -303,7 +306,7 @@ def go_user_permissions_summary_selected(input_file)
     begin
         # Open file for output of summary
         # Output CSV header
-        summary_csv = CSV.open($my_output_file, "w", {:col_sep => $output_delim})
+        summary_csv = CSV.open($my_output_file, "w", {:col_sep => $output_delim, :encoding => $file_encoding})
         summary_csv << $output_fields
 
         # Remove quoting from Rally Export

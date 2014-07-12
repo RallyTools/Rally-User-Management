@@ -22,9 +22,6 @@
 # Usage: ruby user_permissions_loader.rb user_permissions_loader.txt
 # Expected input files are defined as global variables below
 
-# Delimited list of user permissions:
-# $user_synclist_filename    = 'user_sync_list.txt'
-
 fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
@@ -106,18 +103,20 @@ def is_workspace_admin(user, project)
     return is_admin
 end
 
-def update_project_permissions(user_hash, project, permission_level)
-    user_name = user_hash["UserName"]
-    user = @uh.find_user(user_name)
+def update_project_permissions(user, project, permission_level)
+
+    user_name = user["UserName"]
 
     # Check to see if the User is a Subscription or Workspace Administrator.
     # They will always have access to the Project of concern, so there's no point in
     # doing a Project-level permission change for them
     if user.SubscriptionAdmin then
+        @number_subscription_admins += 1
         @logger.info "User #{user_name} is a Subscription Admin. No change in access to Project #{project["Name"]} applied."
         return
     end
     if is_workspace_admin(user, project) then
+        @number_workspace_admins += 1
         @logger.info "User #{user_name} is a Workspace Admin for the Workspace containing #{project["Name"]}. No change in access to Project #{project["Name"]} applied."
         return
     end
@@ -255,9 +254,11 @@ def go_update_project_permissions(project_identifier, new_permission)
 
   # All checks passed. Proceed...
   project_oid = project["ObjectID"]
-  project_users_result = @uh.get_project_users(project_oid)
 
-  number_found = project_users_result[:total_result_count]
+  # TODO - refactor rally_user_helper so that it returns an array of user objects
+  project_users = @uh.get_project_users(project_oid)
+
+  number_found = project_users.length
   @logger.info "Found #{number_found} users for project #{project_name}."
 
   if number_found == 0 then
@@ -268,7 +269,7 @@ def go_update_project_permissions(project_identifier, new_permission)
 
   STDIN.flush
   affirmative_answer = "y"
-  proceed = [(puts "Proceed to update permission to #{new_permission} for ALL #{number_found} users in Project #{project_name}? [N/y]:"), STDIN.gets.rstrip][1]
+  proceed = [(puts "Proceed to update permission to #{new_permission} for ALL non-(Sub,Workspace) Admin existing users in Project #{project_name}? [N/y]:"), STDIN.gets.rstrip][1]
 
   if !proceed.eql?(affirmative_answer) then
       @logger.info "User cancelled update operation. Exiting now..."
@@ -277,12 +278,14 @@ def go_update_project_permissions(project_identifier, new_permission)
   end
 
   @number_updated = 0
-  @logger.info "User affirmed. Proceeding to update permission to #{new_permission} on ALL #{number_found} users in Project #{project_name}"
-  project_users = project_users_result[:results]
+  @number_workspace_admins = 0
+  @number_subscription_admins = 0
+  @logger.info "User affirmed. Proceeding to update permission to #{new_permission} on ALL non-(Sub,Workspace) Admin existing users in Project #{project_name}"
   project_users.each do | this_user |
       update_project_permissions(this_user, project, new_permission)
   end
-  @logger.info "Completed updating permissions for all #{@number_updated} non-(Sub,Workspace) Admin users in Project #{project_name} to #{new_permission}."
+  @logger.info "Completed updating permissions for all #{@number_updated} non-(Sub,Workspace) Admin existing users in Project #{project_name} to #{new_permission}."
+  @logger.info "A total of #{@number_subscription_admins} Sub Admins and #{@number_workspace_admins} Workspace Admins will always have full access to Project #{project_name}."
   log_file.close
 
 rescue => ex

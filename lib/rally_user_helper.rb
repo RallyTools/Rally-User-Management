@@ -1500,10 +1500,13 @@ module RallyUserManagement
             this_page = this_query_result["Results"]
             results.concat(this_page)
         end
-        these_project_users = {
-            :total_result_count => total_result_count,
-            :results => results
-        }
+        these_project_users = []
+        results.each do | this_user_hash |
+            username = this_user_hash["UserName"]
+            user = find_user(username)
+            these_project_users.push(user)
+        end
+
         return these_project_users
     end
 

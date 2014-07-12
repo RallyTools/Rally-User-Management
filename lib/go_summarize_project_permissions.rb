@@ -165,10 +165,7 @@ def find_role(user, project)
     return this_user_role
 end
 
-def summarize_user(user_record, project)
-
-    user_name = user_record["UserName"]
-    this_user = @uh.find_user(user_name)
+def summarize_user(this_user, project)
 
     project_name = project["Name"]
     project_oid = project["ObjectID"].to_s
@@ -315,9 +312,9 @@ def go_summarize_project_permissions(project_identifier)
         summary_csv = CSV.open($my_output_file, "w", {:col_sep => $output_delim, :encoding => $file_encoding})
         summary_csv << $output_fields
 
-        project_users_result = @uh.get_project_users(project_oid)
+        project_users = @uh.get_project_users(project_oid)
 
-        number_found = project_users_result[:total_result_count]
+        number_found = project_users.length
         @logger.info "Found #{number_found} users for project #{project_name}."
 
         if number_found == 0 then
@@ -326,7 +323,6 @@ def go_summarize_project_permissions(project_identifier)
             return
         end
 
-        project_users = project_users_result[:results]
         project_users.each do | this_user_record |
             summary_csv << summarize_user(this_user_record, project)
         end
