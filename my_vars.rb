@@ -1,4 +1,4 @@
-$my_username                = 'subadmin@company.com'
+$my_username                = 'subadmin@rallydev.com'
 $my_password                = 'topsecret'
 $my_base_url                = 'https://rally1.rallydev.com/slm'
 
@@ -154,7 +154,7 @@ $sync_project_permissions           = true
 # Valid Settings:
 # $upgrade_only_mode = true
 # $upgrade_only_mode = false
-$upgrade_only_mode                  = true
+$upgrade_only_mode                  = false
 
 # Parameter:
 # $file_encoding
@@ -164,6 +164,7 @@ $upgrade_only_mode                  = true
 # enable_or_disable_users.rb
 # ldap_username_load.rb
 # simple_user_loader.rb
+# update_project_permissions.rb
 # update_user_attributes.rb
 # user_helper.rb
 # user_permissions_loader.rb
