@@ -279,9 +279,15 @@ module RallyUserManagement
     end
 
     def find_workspace_by_name(workspace_name)
+      is_duplicate = false
       if @cached_workspaces_by_name.has_key?(workspace_name)
         # Found workspace in cache, return the cached workspace
-        return @cached_workspaces_by_name[workspace_name]
+        if @dup_workspace_names.include?(workspace_name) then
+          is_duplicate = true
+          @logger.warn "More than one Workspace of name: #{workspace_name} found."
+          @logger.warn "Returning only the first instance found!"
+        end
+        return @cached_workspaces_by_name[workspace_name], is_duplicate
       else
         # workspace not found in cache - go to Rally
         workspace_query                    = RallyAPI::RallyQuery.new()
@@ -302,29 +308,37 @@ module RallyUserManagement
 
           if workspace_results.total_result_count > 1 then
             # More than one Workspace matching this name found
-            @logger.warn "More than one Workspace of name: #{workspace_name} found."
+              is_duplicate = true
+              @logger.warn "More than one Workspace of name: #{workspace_name} found."
             @logger.warn "Returning only the first instance found!"
           end
 
           # Return workspace object
-          return workspace
+          return workspace, is_duplicate
         else
           # Workspace not found in Rally _or_ cache - return Nil
           @logger.warn "Rally Workspace: #{workspace_name} not found"
-          return nil
+          return nil, is_duplicate
         end
       end
     end
 
     def find_project_by_name(project_name)
+      is_duplicate = false
       if @cached_projects_by_name.has_key?(project_name)
-        # Found workspace in cache, return the cached workspace
-        return @cached_projects_by_name[project_name]
+        # Found project in cache, return the cached project
+        # check to see if it's a duplicate name
+        if @dup_project_names.include?(project_name) then
+            is_duplicate = true
+            @logger.warn "More than one Project of name: #{project_name} found."
+            @logger.warn "Returning only the first instance found!"
+        end
+        return @cached_projects_by_name[project_name], is_duplicate
       else
-        # workspace not found in cache - go to Rally
+        # project not found in cache - go to Rally
         project_query                    = RallyAPI::RallyQuery.new()
-        project_query.project            = nil
-        project_query.type               = :workspace
+        project_query.workspace          = nil
+        project_query.type               = :project
         project_query.fetch              = "Name,State,ObjectID"
         project_query.query_string       = "((Name = \"#{project_name}\") AND (State = \"Open\"))"
 
@@ -340,16 +354,17 @@ module RallyUserManagement
 
           if project_results.total_result_count > 1 then
             # More than one Project matching this name found
+            is_duplicate = true
             @logger.warn "More than one Project of name: #{project_name} found."
             @logger.warn "Returning only the first instance found!"
           end
 
           # Return project object
-          return project
+          return project, is_duplicate
         else
           # Project not found in Rally _or_ cache - return Nil
           @logger.warn "Rally Project: #{project_name} not found"
-          return nil
+          return nil, is_duplicate
         end
       end
     end
@@ -618,6 +633,7 @@ module RallyUserManagement
       if !@cached_projects_by_name.has_key?(project_name) then
         @cached_projects_by_name[project_name] = this_project
       else
+        @dup_project_names.push(project_name)
         @logger.warn "  Warning caching Project by Name: #{project_name}. Duplicate name found!"
         @logger.warn "  Only first instance of this Project name will be cached."
       end
@@ -783,6 +799,10 @@ module RallyUserManagement
 
       @cached_workspaces_by_name = {}
       @cached_projects_by_name = {}
+      @dup_workspace_names = []
+      @dup_project_names = []
+
+      @workspace_hash_of_projects = {}
 
       read_subscription_cache()
       read_workspace_cache()
@@ -794,6 +814,12 @@ module RallyUserManagement
       @cached_subscription = {}
       @cached_workspaces = {}
       @cached_projects = {}
+
+      @cached_workspaces_by_name = {}
+      @cached_projects_by_name = {}
+      @dup_workspace_names = []
+      @dup_project_names = []
+
       @workspace_hash_of_projects = {}
 
       subscription_query = RallyAPI::RallyQuery.new()
@@ -830,6 +856,7 @@ module RallyUserManagement
             if !@cached_workspaces_by_name.has_key?(this_workspace["Name"]) then
               @cached_workspaces_by_name[this_workspace["Name"]]
             else
+              @dup_workspace_names.push(this_workspace["Name"])
               @logger.warn "  Warning caching Workspace by Name: #{this_workspace["Name"]}. Duplicate name found!"
               @logger.warn "  Only first instance of this Workspace name will be cached."
             end
@@ -842,9 +869,10 @@ module RallyUserManagement
               @cached_projects[this_project.ObjectID.to_s] = this_project
 
               if !@cached_projects_by_name.has_key?(this_project["Name"]) then
-                @cached_projects_by_name[this_project["Name"]]
+                @cached_projects_by_name[this_project["Name"]] = this_project
               else
-                @logger.warn "  Warning caching Project by Name: #{this_project["Name"]}. Duplicate name found!"
+                  @dup_project_names.push(this_project["Name"])
+                  @logger.warn "  Warning caching Project by Name: #{this_project["Name"]}. Duplicate name found!"
                 @logger.warn "  Only first instance of this Project name will be cached."
               end
             end
@@ -1447,6 +1475,19 @@ module RallyUserManagement
       end
     end
 
+    # Gets a list of users for a specified project.
+    # Note - this utilizes un-documented and un-supported Rally endpoint
+    # that is not part of WSAPI REST it also digs down into rally_api to
+    # directly GET against this endpoint. Not guaranteed to work forever
+
+    def get_project_users(project_oid)
+        project_users_url = make_project_users_url(project_oid)
+        args = {:method => :get}
+
+        response = @rally_json_connection.send_request(project_users_url, args)
+        return response
+    end
+
     # Create Admin, User, or Viewer permissions for a Workspace
     def create_workspace_permission(user, workspace, permission)
       # Keep backward compatibility of our old permission names
@@ -1604,7 +1645,6 @@ module RallyUserManagement
     # Payload: {"projectuser":{"TeamMember":"true"}}
     # Where 12345678910 => Project OID
     # And   12345678911 => User OID
-
     def make_team_member_url(input_user_oid, input_project_oid)
 
       rally_url = @rally.rally_url + "/webservice/"
@@ -1615,6 +1655,22 @@ module RallyUserManagement
           "/projectuser/" + input_user_oid.to_s + ".js"
 
       return make_team_member_url
+    end
+
+    # Creates a project users URL for request against (undocumented, non-WSAPI and non-supported)
+    # project users list endpoint.
+    # Method: GET
+    # URL Format:
+    # https://rally1.rallydev.com/slm/webservice/x/project/12345678910/projectusers.js
+    def make_project_users_url(input_project_oid)
+        rally_url = @rally.rally_url + "/webservice/"
+        wsapi_version = @rally.wsapi_version
+
+        make_project_users_url = rally_url + wsapi_version +
+            "/project/" + input_project_oid.to_s +
+            "/projectusers.js?fetch=UserName"
+
+        return make_project_users_url
     end
 
     # check if the new permissions are an upgrade vs. what the user currently has

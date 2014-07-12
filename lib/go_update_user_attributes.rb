@@ -235,8 +235,8 @@ def update_attributes(header, row)
       user_profile.read
 
       # Construct refs for Default Workspace Project
-      default_workspace = @uh.find_workspace_by_name(default_workspace_name)
-      default_project   = @uh.find_project_by_name(default_project_name)
+      default_workspace, is_workspace_name_duplicate = @uh.find_workspace_by_name(default_workspace_name)
+      default_project, is_project_name_duplicate   = @uh.find_project_by_name(default_project_name)
 
       if default_workspace.nil? then
         @logger.warn "    Default Workspace: #{default_workspace} Not found. Skipping update."
