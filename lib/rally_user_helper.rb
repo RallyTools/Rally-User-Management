@@ -85,7 +85,7 @@ module RallyUserManagement
 
       # fetch data
       @initial_user_fetch            = "UserName,FirstName,LastName,DisplayName"
-      @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships,UserProfile"
+      @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships,UserProfile,SubscriptionAdmin"
 
     end
 
@@ -1475,6 +1475,27 @@ module RallyUserManagement
       end
     end
 
+    def reread(json_object, params = {})
+        args = { :method => :get }
+
+        #json_response = @rally_connection.read_object(json_object["_ref"], args, params)
+        json_response = @rally_json_connection.send_request(json_object["_ref"], args, params)
+        rally_type = json_response.keys[0]
+        json_response[rally_type]
+    end
+
+    def read_collection(collection_hash, params = {})
+        collection_count = collection_hash['Count']
+        start = 1
+        pagesize = params[:pagesize] || 200
+        full_collection = []
+        start.step(collection_count, pagesize).each do |page_start|
+            page = reread(collection_hash, {:pagesize => 200, :startindex => page_start})
+            full_collection.concat(page["Results"])
+        end
+        {"Results" => full_collection}
+    end
+
     # Gets a list of users for a specified project.
     # Note - this utilizes un-documented and un-supported Rally endpoint
     # that is not part of WSAPI REST it also digs down into rally_api to
@@ -1484,8 +1505,28 @@ module RallyUserManagement
         project_users_url = make_project_users_url(project_oid)
         args = {:method => :get}
 
-        response = @rally_json_connection.send_request(project_users_url, args)
-        return response
+        # Do initial query with pagesize of 1 to see how many we have in the collection
+        params = {:pagesize => 1, :startindex => 1}
+        initial_response = @rally_json_connection.send_request(project_users_url, args, params)
+        initial_result = initial_response["QueryResult"]
+        total_result_count = initial_result["TotalResultCount"]
+
+        # Now page through the collection and aggregate all results
+        pagesize = 200
+        number_pages = total_result_count/pagesize + 1
+        results = []
+        for startindex in 1..number_pages
+            params = {:pagesize=> pagesize, :startindex => startindex, :order=> "UserName ASC"}
+            this_response = @rally_json_connection.send_request(project_users_url, args, params)
+            this_query_result = this_response["QueryResult"]
+            this_page = this_query_result["Results"]
+            results.concat(this_page)
+        end
+        these_project_users = {
+            :total_result_count => total_result_count,
+            :results => results
+        }
+        return these_project_users
     end
 
     # Create Admin, User, or Viewer permissions for a Workspace

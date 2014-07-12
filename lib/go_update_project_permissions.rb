@@ -85,8 +85,55 @@ $upgrade_only_mode                  = false
 # MAKE NO CHANGES BELOW THIS LINE!!
 # =====================================================================================================
 
-def update_project_permissions(user, project)
+def is_workspace_admin(user, project)
+    is_admin = false
+    user_permissions = user["UserPermissions"]
 
+    this_workspace = project["Workspace"]
+    this_workspace_oid = this_workspace["ObjectID"].to_s
+
+    user_permissions.each do  | this_permission |
+        if this_permission._type == "WorkspacePermission" then
+            if this_permission.Workspace.ObjectID.to_s == this_workspace_oid then
+                permission_level = this_permission.Role
+                if permission_level == "ADMIN" then
+                    is_admin = true
+                    break
+                end
+            end
+        end
+    end
+    return is_admin
+end
+
+def update_project_permissions(user_hash, project, permission_level)
+    user_name = user_hash["UserName"]
+    user = @uh.find_user(user_name)
+
+    # Check to see if the User is a Subscription or Workspace Administrator.
+    # They will always have access to the Project of concern, so there's no point in
+    # doing a Project-level permission change for them
+    if user.SubscriptionAdmin then
+        @logger.info "User #{user_name} is a Subscription Admin. No change in access to Project #{project["Name"]} applied."
+        return
+    end
+    if is_workspace_admin(user, project) then
+        @logger.info "User #{user_name} is a Workspace Admin for the Workspace containing #{project["Name"]}. No change in access to Project #{project["Name"]} applied."
+        return
+    end
+
+    # Ok, they're a regular user. Proceed to process the update
+
+    begin
+        @logger.info "Updating permissions for User #{user_name}"
+        create_new_user_flag = false
+        @uh.update_project_permissions(project, user, permission_level, create_new_user_flag)
+        @number_updated += 1
+    rescue => ex
+        @logger.error "Error occurred trying to update permissions for user #{user_name}."
+        @logger.error ex
+        return
+    end
 end
 
 def is_permission_valid(permission_string)
@@ -111,7 +158,7 @@ def go_update_project_permissions(project_identifier, new_permission)
   my_vars= File.dirname(__FILE__) + "/../my_vars.rb"
   if FileTest.exist?( my_vars ) then require my_vars end
 
-  log_file = File.open("user_permissions_syncer.log", "a")
+  log_file = File.open("update_project_permissions.log", "a")
   if $logger_mode == :stdout then
       @logger = Logger.new RallyUserManagement::MultiIO.new(STDOUT, log_file)
   else
@@ -204,14 +251,44 @@ def go_update_project_permissions(project_identifier, new_permission)
       return
   end
 
+  project_name = project["Name"]
+
   # All checks passed. Proceed...
   project_oid = project["ObjectID"]
-  project_users = @uh.get_project_users(project_oid)
-  @logger.info project_users
+  project_users_result = @uh.get_project_users(project_oid)
 
+  number_found = project_users_result[:total_result_count]
+  @logger.info "Found #{number_found} users for project #{project_name}."
+
+  if number_found == 0 then
+      @logger.warn "No users found in Project #{project_name}. Exiting now..."
+      log_file.close
+      return
+  end
+
+  STDIN.flush
+  affirmative_answer = "y"
+  proceed = [(puts "Proceed to update permission to #{new_permission} for ALL #{number_found} users in Project #{project_name}? [N/y]:"), STDIN.gets.rstrip][1]
+
+  if !proceed.eql?(affirmative_answer) then
+      @logger.info "User cancelled update operation. Exiting now..."
+      log_file.close
+      return
+  end
+
+  @number_updated = 0
+  @logger.info "User affirmed. Proceeding to update permission to #{new_permission} on ALL #{number_found} users in Project #{project_name}"
+  project_users = project_users_result[:results]
+  project_users.each do | this_user |
+      update_project_permissions(this_user, project, new_permission)
+  end
+  @logger.info "Completed updating permissions for all #{@number_updated} non-(Sub,Workspace) Admin users in Project #{project_name} to #{new_permission}."
   log_file.close
 
 rescue => ex
+  puts ex
+  puts ex.backtrace
+  puts ex.message
   @logger.error ex
   @logger.error ex.backtrace
   @logger.error ex.message
