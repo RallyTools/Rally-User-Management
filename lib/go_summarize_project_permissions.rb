@@ -331,7 +331,7 @@ def go_summarize_project_permissions(project_identifier)
         log_file.close
 
         rescue Exception => ex
-        puts ex.backtrace
-        puts ex.message
+        @logger.error ex.backtrace
+        @logger.error ex.message
     end
 end

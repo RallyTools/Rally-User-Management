@@ -255,9 +255,7 @@ def go_update_project_permissions(project_identifier, new_permission)
   # All checks passed. Proceed...
   project_oid = project["ObjectID"]
 
-  # TODO - refactor rally_user_helper so that it returns an array of user objects
   project_users = @uh.get_project_users(project_oid)
-
   number_found = project_users.length
   @logger.info "Found #{number_found} users for project #{project_name}."
 
@@ -289,9 +287,6 @@ def go_update_project_permissions(project_identifier, new_permission)
   log_file.close
 
 rescue => ex
-  puts ex
-  puts ex.backtrace
-  puts ex.message
   @logger.error ex
   @logger.error ex.backtrace
   @logger.error ex.message
