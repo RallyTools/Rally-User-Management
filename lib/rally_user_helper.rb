@@ -1482,31 +1482,16 @@ module RallyUserManagement
     def get_project_users(project_oid)
         project_users_url = make_project_users_url(project_oid)
         args = {:method => :get}
+        params = {:order=> "UserName ASC"}
+        results_json = @rally_json_connection.get_all_json_results(project_users_url, args, params, limit = 99999)
 
-        # Do initial query with pagesize of 1 to see how many we have in the collection
-        params = {:pagesize => 1, :startindex => 1}
-        initial_response = @rally_json_connection.send_request(project_users_url, args, params)
-        initial_result = initial_response["QueryResult"]
-        total_result_count = initial_result["TotalResultCount"]
-
-        # Now page through the collection and aggregate all results
-        pagesize = 200
-        number_pages = total_result_count/pagesize + 1
-        results = []
-        for startindex in 1..number_pages
-            params = {:pagesize=> pagesize, :startindex => startindex, :order=> "UserName ASC"}
-            this_response = @rally_json_connection.send_request(project_users_url, args, params)
-            this_query_result = this_response["QueryResult"]
-            this_page = this_query_result["Results"]
-            results.concat(this_page)
-        end
         these_project_users = []
+        results = results_json["QueryResult"]["Results"]
         results.each do | this_user_hash |
             username = this_user_hash["UserName"]
             user = find_user(username)
             these_project_users.push(user)
         end
-
         return these_project_users
     end
 
