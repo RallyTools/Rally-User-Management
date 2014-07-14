@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# Copyright (c) 2013 Rally Software Development
-=======
 # Copyright (c) 2014 Rally Software Development
->>>>>>> 49256d2677a0c442dc4e604dcbd204d22ff1ef66
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
