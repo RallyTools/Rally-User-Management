@@ -704,9 +704,6 @@ module RallyUserManagement
       @cached_subscription.each_pair do | sub_id, this_subscription |
 
         data = []
-        @logger.info "sub_id: #{sub_id.inspect}"
-        @logger.info "this_subscription: #{this_subscription.inspect}"
-
         data << sub_id
         data << this_subscription
 
