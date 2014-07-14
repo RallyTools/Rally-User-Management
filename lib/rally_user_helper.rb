@@ -1482,7 +1482,7 @@ module RallyUserManagement
     def get_project_users(project_oid)
         project_users_url = make_project_users_url(project_oid)
         args = {:method => :get}
-        params = {:order=> "UserName ASC"}
+        params = {:fetch => "UserName":order=> "UserName ASC"}
         results_json = @rally_json_connection.get_all_json_results(project_users_url, args, params, limit = 99999)
 
         these_project_users = []
