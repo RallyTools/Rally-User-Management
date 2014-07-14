@@ -1477,12 +1477,16 @@ module RallyUserManagement
 
     # Gets a list of users for a specified project.
     # Note - this utilizes un-documented and un-supported Rally endpoint
-    # that is not part of WSAPI REST it also digs down into rally_api to
-    # directly GET against this endpoint. Not guaranteed to work forever
+    # that is not part of WSAPI REST. It also digs down into rally_api to
+    # directly GET against this endpoint. This is not guaranteed to work forever
     def get_project_users(project_oid)
         project_users_url = make_project_users_url(project_oid)
         args = {:method => :get}
+<<<<<<< HEAD
+        params = {:order => "UserName ASC", :fetch => "UserName"}
+=======
         params = {:order=> "UserName ASC"}
+>>>>>>> bcf4e7896fa400a06b65f402163d0232b0a26334
         results_json = @rally_json_connection.get_all_json_results(project_users_url, args, params, limit = 99999)
 
         these_project_users = []
@@ -1675,7 +1679,7 @@ module RallyUserManagement
 
         make_project_users_url = rally_url + wsapi_version +
             "/project/" + input_project_oid.to_s +
-            "/projectusers.js?fetch=UserName"
+            "/projectusers.js"
 
         return make_project_users_url
     end
