@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,98 +18,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+#include for rally json library gem
 require 'rally_api'
-require './user_mgmt_version'
 require 'csv'
+require './lib/multi_io.rb'
+require './lib/rally_user_helper.rb'
+require './lib/go_change_usernames.rb'
 
-$my_base_url                   = "https://rally1.rallydev.com/slm"
+$users_filename_arg = ARGV[0]
 
-$my_username                   = "user@company.com"
-$my_password                   = "password"
-$wsapi_version                 = "1.43"
-
-# Mode options:
-# :usernameandemail => resets both UserName and Email to the updated value
-# :usernameonly => only resets UserName. Email address remains unchanged
-$user_update_mode              = :usernameandemail
-
-# Encoding
-$file_encoding                 = "US-ASCII"
-
-$users_filename = ARGV[0]
-
-if $users_filename == nil
+if $users_filename_arg == nil
 # This is the default of the file to be used for uploading user permissions
   $users_filename               = 'change_usernames_template.csv'
+else
+  $users_filename = File.dirname(__FILE__) + "/" + $users_filename_arg
 end
 
-if File.exists?(File.dirname(__FILE__) + "/" + $users_filename) == false
+if File.exists?($users_filename) == false
   puts "Username mapping file: #{$users_filename} not found. Exiting."
   exit
 end
 
-# Load (and maybe override with) my personal/private variables from a file...
-my_vars= File.dirname(__FILE__) + "/my_vars.rb"
-if FileTest.exist?( my_vars ) then require my_vars end
-
-def update_username(header, row)
-  exist_username        = row[header[0]].strip
-  new_username          = row[header[1]].strip
-
-  user_query = RallyAPI::RallyQuery.new()
-  user_query.type = :user
-  user_query.fetch = "ObjectID,UserName,EmailAddress,FirstName,LastName,Disabled"
-  user_query.query_string = "(UserName = \"" + exist_username + "\")"
-  user_query.order = "UserName Asc"
-
-  rally_user = @rally.find(user_query)
-
-  if rally_user.total_result_count == 0
-    puts "Rally user #{exist_username} not found...skipping"
-  else
-    begin
-      rally_user_toupdate = rally_user.first()
-      fields = {}
-      fields["UserName"] = new_username
-      if $user_update_mode == :usernameandemail then
-        fields["EmailAddress"] = new_username
-      end
-      rally_user_updated = @rally.update(:user, rally_user_toupdate.ObjectID, fields) #by ObjectID
-      puts "Rally user #{exist_username} successfully changed to #{new_username}"
-    rescue => ex
-      puts "Rally user #{exist_username} not updated due to error"
-      puts ex
-    end
-  end
-end
-
 begin
-
-  #==================== Making a connection to Rally ====================
-
-  #Setting custom headers
-  @user_mgmt_version      = UserManagementVersion.new()
-  $headers                = RallyAPI::CustomHttpHeader.new()
-  $headers.name           = "Ruby User Management Tool 2::Change Usernames"
-  $headers.vendor         = "Rally Labs"
-  $headers.version        = @user_mgmt_version.revision()
-
-  config                  = {:base_url => $my_base_url}
-  config[:username]       = $my_username
-  config[:password]       = $my_password
-  config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()
-  config[:version]        = $wsapi_version
-
-  @rally = RallyAPI::RallyRestJson.new(config)
-
-  input  = CSV.read($users_filename, {:encoding => $file_encoding})
-
-  header = input.first #ignores first line
-
-  rows   = []
-  (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
-
-  rows.each do |row|
-    update_username(header, row)
-  end
+  go_change_usernames($users_filename)
 end

@@ -22,11 +22,13 @@
 
 # Version information for Rally-User-Management
 
-class UserManagementVersion
+module RallyUserManagement
+    class Version
 
-    VERSION = "0.53"
+        VERSION = "0.5.6"
 
-    def revision
-        return VERSION
+        def revision
+            return VERSION
+        end
     end
 end

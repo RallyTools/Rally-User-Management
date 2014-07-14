@@ -23,17 +23,17 @@ require 'rally_api'
 require 'csv'
 require './lib/multi_io.rb'
 require './lib/rally_user_helper.rb'
-require './lib/go_user_permissions_summary.rb'
+require './lib/go_update_project_permissions.rb'
 
-$output_file_arg = ARGV[0]
+$project_identifier_arg = ARGV[0]
+$new_permission_arg = ARGV[1]
 
-if $output_file_arg == nil
-# This is the default of the file to be used for output summary of user permissions
-    $output_filename =  File.dirname(__FILE__) + "/" + 'user_permissions_summary.txt'
-else
-    $output_filename = File.dirname(__FILE__) + "/" + ARGV[0]
+if $project_identifier_arg.nil? || $new_permission_arg.nil? then
+    puts "Usage: ruby update_all_project_permissions.rb \"My Project\" \"Editor\""
+    puts "or: ruby update_all_project_permissions 12345678910 \"No Access\""
+    puts "Where in number form, the project identifier is the Project's ObjectID."
 end
 
 begin
-  go_user_permissions_summary($output_filename)
+    go_update_project_permissions($project_identifier_arg, $new_permission_arg)
 end
