@@ -79,6 +79,11 @@ $max_cache_age                      = 1
 # first, and only apply the change if it represents an upgrade over existing permissions
 $upgrade_only_mode                  = false
 
+# When this flag is set to true, Users provisioned via the simple_user_loader.rb script will ignore
+# the Default Workspace,Project permissions, and will receive _only_ those permissions specified
+# via the input file (via the source user permissions, for example)
+$ignore_default_permissions        = false
+
 # Maximum parameters for Workspaces/Projects to process
 $max_workspaces                     = 100000
 $max_projects                       = 100000
@@ -294,104 +299,116 @@ def create_user(header, row)
       # Template user id
       permission_template_username = default_permissions
 
-      # Check to see if we have cached user permissions for this user source
-      if $user_permissions_cache.include?(permission_template_username)
-          permission_source_user = $user_permissions_cache[permission_template_username]
+      # We _are_ ignoring default permissions assigned by Rally, so if we do a user_permissions_sync, those permissions
+      # not present on the source user, will be removed from the target
+      if $ignore_default_permissions then
+          @logger.info "$ignore_default_permissions == true"
+          @logger.info "Permissions will be synced from the template user onto the new user."
+          @logger.info "Permissions not present on the template user will be removed from the new user."
+          @uh.sync_project_permissions(permission_template_username, user["UserName"])
+
+          # We're not ignoring default permissions assigned by Rally, so, copy the template users permissions onto
+      # the new user additively
       else
-          # Go to Rally
-          user_fetch                    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
-          user_query                    = RallyAPI::RallyQuery.new()
-          user_query.type               = :user
-          user_query.fetch              = user_fetch
-          user_query.page_size          = 200 #optional - default is 200
-          user_query.limit              = 50000 #optional - default is 99999
-          user_query.order              = "UserName Asc"
-          user_query.query_string       = "(UserName = \"#{permission_template_username}\")"
+          # Check to see if we have cached user permissions for this user source
+          if $user_permissions_cache.include?(permission_template_username)
+              permission_source_user = $user_permissions_cache[permission_template_username]
+          else
+              # Go to Rally
+              user_fetch                    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
+              user_query                    = RallyAPI::RallyQuery.new()
+              user_query.type               = :user
+              user_query.fetch              = user_fetch
+              user_query.page_size          = 200 #optional - default is 200
+              user_query.limit              = 50000 #optional - default is 99999
+              user_query.order              = "UserName Asc"
+              user_query.query_string       = "(UserName = \"#{permission_template_username}\")"
 
-          user_query_results = @rally.find(user_query)
-          n_users = user_query_results.total_result_count
+              user_query_results = @rally.find(user_query)
+              n_users = user_query_results.total_result_count
 
-          if n_users == 0 then
-              @logger.warn "User #{permission_source_user} not found in Rally for source of Default Permissions. Skipping permissions grants for user #{this_user['UserName']}"
-              return
+              if n_users == 0 then
+                  @logger.warn "User #{permission_template_username} not found in Rally for source of Default Permissions. Skipping permissions grants for user #{user['UserName']}"
+                  return
+              end
+
+              permission_source_user = user_query_results.first
           end
 
-          permission_source_user = user_query_results.first
-      end
+          workspace_count = 0
+          project_count = 0
+          user_permissions = permission_source_user.UserPermissions
 
-      workspace_count = 0
-      project_count = 0
-      user_permissions = permission_source_user.UserPermissions
+          @logger.info "Source User: #{permission_source_user} has #{user_permissions.length} permissions."
 
-      @logger.info "Source User: #{permission_source_user} has #{user_permissions.length} permissions."
+          user_permissions.each do | this_permission |
 
-      user_permissions.each do | this_permission |
+              # Set default for team membership
+              team_member = "No"
 
-          # Set default for team membership
-          team_member = "No"
+              # Grab needed data from query/cache
+              permission_type = this_permission._type
+              permission_role = this_permission.Role
 
-          # Grab needed data from query/cache
-          permission_type = this_permission._type
-          permission_role = this_permission.Role
+              if permission_type == $type_workspacepermission then
 
-          if permission_type == $type_workspacepermission then
+                  workspace_count += 1
+                  if workspace_count > $max_workspaces && $test_mode then
+                    @logger.info "  TEST MODE: Breaking workspaces at maximum of #{$max_workspaces}."
+                    break
+                  end
 
-              workspace_count += 1
-              if workspace_count > $max_workspaces && $test_mode then
-                @logger.info "  TEST MODE: Breaking workspaces at maximum of #{$max_workspaces}."
-                break
-              end
+                  workspace_name = strip_role_from_permission(this_permission.Name)
+                  this_workspace = this_permission["Workspace"]
+                  team_member = "N/A"
 
-              workspace_name = strip_role_from_permission(this_permission.Name)
-              this_workspace = this_permission["Workspace"]
-              team_member = "N/A"
+                  # Don't summarize permissions for closed Workspaces
+                  workspace_state = this_workspace["State"]
 
-              # Don't summarize permissions for closed Workspaces
-              workspace_state = this_workspace["State"]
+                  if workspace_state == "Closed"
+                    next
+                  end
 
-              if workspace_state == "Closed"
-                next
-              end
-
-              @uh.update_workspace_permissions(this_workspace, user, permission_role, new_user)
-          else
-              project_count += 1
-              if project_count > $max_projects && $test_mode then
-                @logger.info "  TEST MODE: Breaking projects at maximum of #{$max_projects}."
-                next
-              end
-
-              this_project = this_permission["Project"]
-
-              # Don't summarize permissions for closed Projects
-              project_state = this_project["State"]
-              if project_state == "Closed"
-                  next
-              end
-
-              # Grab the Project Name
-              project_name = this_project["Name"]
-
-              # Grab the ObjectID
-              project_object_id = this_project["ObjectID"]
-
-              # Convert OID to a string so is_team_member can do string comparison
-              project_object_id_string = project_object_id.to_s
-
-              # Determine if user is a team member on this project
-              these_team_memberships = permission_source_user["TeamMemberships"]
-              team_member = @uh.is_team_member(project_object_id_string, permission_source_user)
-
-              @uh.update_project_permissions(this_project, user, permission_role, new_user)
-
-              @logger.info "Source User: #{permission_template_username}; #{project_name}; #{team_member}"
-
-              # Update Team Membership (Only applicable for Editor Permissions at Project level)
-              if permission_role == $EDITOR then
-                @uh.update_team_membership(user, project_object_id_string, project_name, team_member)
+                  @uh.update_workspace_permissions(this_workspace, user, permission_role, new_user)
               else
-                @logger.info "  Permission level: #{permission_role}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
-                  "Team Member. No Team Membership update: N/A."
+                  project_count += 1
+                  if project_count > $max_projects && $test_mode then
+                    @logger.info "  TEST MODE: Breaking projects at maximum of #{$max_projects}."
+                    next
+                  end
+
+                  this_project = this_permission["Project"]
+
+                  # Don't summarize permissions for closed Projects
+                  project_state = this_project["State"]
+                  if project_state == "Closed"
+                      next
+                  end
+
+                  # Grab the Project Name
+                  project_name = this_project["Name"]
+
+                  # Grab the ObjectID
+                  project_object_id = this_project["ObjectID"]
+
+                  # Convert OID to a string so is_team_member can do string comparison
+                  project_object_id_string = project_object_id.to_s
+
+                  # Determine if user is a team member on this project
+                  these_team_memberships = permission_source_user["TeamMemberships"]
+                  team_member = @uh.is_team_member(project_object_id_string, permission_source_user)
+
+                  @uh.update_project_permissions(this_project, user, permission_role, new_user)
+
+                  @logger.info "Source User: #{permission_template_username}; #{project_name}; #{team_member}"
+
+                  # Update Team Membership (Only applicable for Editor Permissions at Project level)
+                  if permission_role == $EDITOR then
+                    @uh.update_team_membership(user, project_object_id_string, project_name, team_member)
+                  else
+                    @logger.info "  Permission level: #{permission_role}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
+                      "Team Member. No Team Membership update: N/A."
+                  end
               end
           end
       end
