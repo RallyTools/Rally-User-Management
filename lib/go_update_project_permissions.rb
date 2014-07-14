@@ -103,6 +103,25 @@ def is_workspace_admin(user, project)
     return is_admin
 end
 
+def is_project_admin(user, project)
+    is_admin = false
+    user_permissions = user["UserPermissions"]
+    this_project_oid = project["ObjectID"].to_s
+
+    user_permissions.each do  | this_permission |
+        if this_permission._type == "ProjectPermission" then
+            if this_permission.Project.ObjectID.to_s == this_project_oid then
+                permission_level = this_permission.Role
+                if permission_level == $ADMIN then
+                    is_admin = true
+                    break
+                end
+            end
+        end
+    end
+    return is_admin
+end
+
 def update_project_permissions(user, project, permission_level)
 
     user_name = user["UserName"]
@@ -118,6 +137,11 @@ def update_project_permissions(user, project, permission_level)
     if is_workspace_admin(user, project) then
         @number_workspace_admins += 1
         @logger.info "User #{user_name} is a Workspace Admin for the Workspace containing #{project["Name"]}. No change in access to Project #{project["Name"]} applied."
+        return
+    end
+    if is_project_admin(user, project) then
+        @number_project_admins += 1
+        @logger.info "User #{user_name} is a Project Admin for #{project["Name"]}. No change in access to Project #{project["Name"]} applied."
         return
     end
 
@@ -267,7 +291,7 @@ def go_update_project_permissions(project_identifier, new_permission)
 
   STDIN.flush
   affirmative_answer = "y"
-  proceed = [(puts "Proceed to update permission to #{new_permission} for ALL non-(Sub,Workspace) Admin existing users in Project #{project_name}? [N/y]:"), STDIN.gets.rstrip][1]
+  proceed = [(puts "Proceed to update permission to #{new_permission} for ALL non-(Sub,Workspace,Project) Admin existing users in Project #{project_name}? [N/y]:"), STDIN.gets.rstrip][1]
 
   if !proceed.eql?(affirmative_answer) then
       @logger.info "User cancelled update operation. Exiting now..."
@@ -276,14 +300,16 @@ def go_update_project_permissions(project_identifier, new_permission)
   end
 
   @number_updated = 0
-  @number_workspace_admins = 0
   @number_subscription_admins = 0
+  @number_workspace_admins = 0
+  @number_project_admins = 0
   @logger.info "User affirmed. Proceeding to update permission to #{new_permission} on ALL non-(Sub,Workspace) Admin existing users in Project #{project_name}"
   project_users.each do | this_user |
       update_project_permissions(this_user, project, new_permission)
   end
-  @logger.info "Completed updating permissions for all #{@number_updated} non-(Sub,Workspace) Admin existing users in Project #{project_name} to #{new_permission}."
   @logger.info "A total of #{@number_subscription_admins} Sub Admins and #{@number_workspace_admins} Workspace Admins will always have full access to Project #{project_name}."
+  @logger.info "#{@number_project_admins} exist for Project #{project_name}. Their permissions were not adjusted."
+  @logger.info "Completed updating permissions for all #{@number_updated} non-(Sub,Workspace) Admin existing users in Project #{project_name} to #{new_permission}."
   log_file.close
 
 rescue => ex
