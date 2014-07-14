@@ -180,9 +180,7 @@ def go_grant_everyone_access(project_identifier, new_permission)
     uh_config[:logger]              = @logger
     uh_config[:create_flag]         = true
     uh_config[:max_cache_age]       = $max_cache_age
-    # UPGRADE ONLY MODE == true!!
-    # Hard-set here makes sure we override any settings specified in my_vars.rb
-    uh_config[:upgrade_only_mode]   = true
+    uh_config[:upgrade_only_mode]   = $upgrade_only_mode
     uh_config[:file_encoding]       = $file_encoding
 
     @uh = RallyUserManagement::UserHelper.new(uh_config)
