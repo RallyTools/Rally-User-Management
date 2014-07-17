@@ -180,7 +180,8 @@ def go_grant_everyone_access(project_identifier, new_permission)
     uh_config[:logger]              = @logger
     uh_config[:create_flag]         = true
     uh_config[:max_cache_age]       = $max_cache_age
-    uh_config[:upgrade_only_mode]   = $upgrade_only_mode
+    # Force upgrade-only mode for this script
+    uh_config[:upgrade_only_mode]   = true
     uh_config[:file_encoding]       = $file_encoding
 
     @uh = RallyUserManagement::UserHelper.new(uh_config)
