@@ -89,8 +89,34 @@ module RallyUserManagement
 
       if $enable_jp_redis_user_cache
         @logger.info "Using redis.io for user cache..."
-        require 'redis'
+        begin
+          redis_gem = 'redis'
+          require redis_gem
+        rescue Exception => ex
+          if ex.message == 'cannot load such file -- #{redis_gem}'
+            puts "ERROR: This code requires the '#{redis_gem}' Ruby Gem to be installed and running,"
+            puts "       because variable '$enable_jp_redis_user_cache' is set to TRUE in file 'my_vars.rb'."
+          else
+            puts ex
+          end
+          exit
+        end
+
+        # Instatiate a redis object
         @jp_redis_user_cache = Redis.new
+
+        # Is the redis server really up and running?
+        begin
+          response = @jp_redis_user_cache.ping
+        rescue Exception => ex
+          if ex.message == 'Error connecting to Redis on 127.0.0.1:6379 (Errno::ECONNREFUSED)'
+            puts "ERROR: This code requires the Redis server to be installed and running, because"
+            puts "       variable '$enable_jp_redis_user_cache' is set to TRUE in file 'my_vars.rb'."
+            puts "       Please see 'http://redis.io/topics/quickstart' for documentation."
+            puts "       (or run '(cd ./redis-3.2.0; ./src/redis-server )&'"
+          end
+          exit
+        end
       end
 
     end
@@ -98,7 +124,6 @@ module RallyUserManagement
     def get_cached_users()
       if $enable_jp_redis_user_cache
         return @jp_redis_user_cache.keys('*')
-require 'byebug';byebug
       else
         return @cached_users
       end
