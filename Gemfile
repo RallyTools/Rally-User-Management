@@ -1,6 +1,5 @@
 # Define which versions of:
 #     ---ruby--- -----------gemset------------
-ruby 'ruby-2.3.1@redis-ruby-2.3.1'
 ruby 'ruby-2.2.4@redis-3.2.0-ruby-2.2.4'
 
 
