@@ -203,6 +203,24 @@ def create_user(header, row)
     user_fields["NetworkID"] = network_id
   end
 
+  # JPKole testing
+  if 'debug1' == 'debug2'
+    print "Testing: "
+    print "UN='#{username}' "
+    print "LN='#{user_fields['LastName']}' "
+    print "FN='#{user_fields['FirstName']}' "
+    print "DN='#{user_fields['DisplayName']}' "
+    print "DP='#{default_permissions}' "
+    print "RO='#{user_fields['Role']}' "
+    print "OL='#{user_fields['OfficeLocation']}' "
+    print "De='#{user_fields['Department']}' "
+    print "CC='#{user_fields['CostCenter']}' "
+    print "PH='#{user_fields['Phone']}' "
+    print "NI='#{user_fields['NetworkID']}' "
+    print "\n"
+    return
+  end
+
   # look up user
   user = @uh.find_user(username)
 
@@ -496,7 +514,11 @@ def go_simple_user_loader(input_file)
   (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
 
   rows.each do |row|
-    create_user(header, row)
+    if 1 == 2
+        print "Testing: #{row}\n"
+    else
+        create_user(header, row)
+    end
   end
 
   log_file.close
