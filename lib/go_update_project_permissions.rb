@@ -233,9 +233,14 @@ def go_update_project_permissions(project_identifier, new_permission)
   end
 
   # Caching Users can help performance if we're doing updates for a lot of users
-  if $enable_user_cache
-    @logger.info "Caching user list..."
+  if $enable_jp_redis_user_cache
+    @logger.info "Caching user list via redis..."
     @uh.cache_users()
+  else
+    if $enable_user_cache
+      @logger.info "Caching user list..."
+      @uh.cache_users()
+    end
   end
 
   # Check Permission type string to see if its valid
