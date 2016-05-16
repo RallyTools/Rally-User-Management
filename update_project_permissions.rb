@@ -29,9 +29,10 @@ $project_identifier_arg = ARGV[0]
 $new_permission_arg = ARGV[1]
 
 if $project_identifier_arg.nil? || $new_permission_arg.nil? then
-    puts "Usage: ruby update_all_project_permissions.rb \"My Project\" \"Editor\""
-    puts "or: ruby update_all_project_permissions 12345678910 \"No Access\""
+    puts "Usage: ruby update_project_permissions.rb \"My Project\" \"Editor\""
+    puts "or: ruby update_project_permissions 12345678910 \"No Access\""
     puts "Where in number form, the project identifier is the Project's ObjectID."
+    exit
 end
 
 begin
