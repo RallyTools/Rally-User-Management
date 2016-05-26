@@ -1,6 +1,6 @@
-$my_base_url                = 'https://demo-west.rallydev.com/slm'
-$my_username                = 'paul@acme.com'
-$my_password                = 'Kanban!!'
+$my_base_url                = 'https://sandbox.rallydev.com/slm'
+$my_username                = 'user@acme.com'
+$my_password                = 'TopSecret'
 
 #API Version
 $wsapi_version              = '1.43'
@@ -63,8 +63,10 @@ $enable_user_cache          = false
 # Description:
 #   This parameter will override the "$enable_user_cache" parameter above.
 #   When set to true, it will cache users using the "http://redis.io/"
-#   utility (which must being running), instead of just using a Ruby hash.
-$enable_jp_redis_user_cache = true
+#   utility instead of just using a Ruby hash.  This requires:
+#   	1) gem install redis
+#	2) the redis server to be running (see instructions from website)
+$enable_jp_redis_user_cache = false
 # ----------------------------------------------------------------------
 # Parameter:
 #   $summary_mode
