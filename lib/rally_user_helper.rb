@@ -185,11 +185,15 @@ module RallyUserManagement
         this_user = query_results.first
         if $enable_jp_redis_user_cache
           @jp_redis_user_cache.set(this_user["UserName"].downcase, this_user)
+          @logger.info "Cached User (redis): #{this_user.UserName}"
         else
-          @cached_users[this_user["UserName"].downcase] = this_user
+	  if $enable_user_cache == true
+            @cached_users[this_user["UserName"].downcase] = this_user
+            @logger.info "Cached User (hash): #{this_user.UserName}"
+          else
+            @logger.info "User not Cached: #{this_user.UserName}"
+	  end
         end
-        @logger.info "Cached User: #{this_user.UserName}"
-
         return this_user
       end
     end
