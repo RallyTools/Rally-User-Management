@@ -4,7 +4,7 @@ $my_password                = 'TopSecret'
 
 #API Version
 $wsapi_version              = '1.43'
-$wsapi_version              = 'v2.0'
+#$wsapi_version              = 'v2.0'
 
 # User-configurable settings:
 #============================
