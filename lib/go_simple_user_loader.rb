@@ -224,7 +224,6 @@ def create_user(header, row)
 
   # look up user
   user = @uh.find_user(username)
-
   #create user if they do not exist
 
   if user == nil
@@ -240,6 +239,8 @@ def create_user(header, row)
         @logger.error ex
         return
     end
+  else
+    @logger.warn("User #{username} already exists.  Permissions will be updated, but not overwritten for this user.")
   end
 
   # Check for "type" of DefaultPermissions
