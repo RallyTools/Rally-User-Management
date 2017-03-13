@@ -1,3 +1,4 @@
 TargetUserID,SourceUserID
-wsadmin5@company.com,wsadmin@test.com
+user1@company.com,template_user1@company.com
+user2@company.com,template_user2@company.com
 

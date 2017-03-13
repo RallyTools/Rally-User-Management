@@ -4,3 +4,6 @@ lib/_cached_subscription.txt
 lib/_cached_workspaces.txt
 update_project_permissions.log
 test_configuration_helper.rb
+my_vars.rb
+*.log
+test_templates/
