@@ -5,7 +5,7 @@ module TestConfig
   #
   # DO NOT CHECK IT IN
 
-  #this file contains information about a rally instance and objects that the automated tests can run with.  
+  #this file contains information about a rally instance and objects that the automated tests can run with.
 
   # rally connection information
   RALLY_USER = "someone@somewhere.com"
