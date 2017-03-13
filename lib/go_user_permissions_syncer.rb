@@ -29,6 +29,7 @@ fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
 require fileloc + '/rally_user_helper.rb'
+require fileloc + '/permissions_utility.rb'
 require fileloc + '/multi_io.rb'
 require fileloc + '/version.rb'
 require 'csv'
@@ -137,18 +138,21 @@ def sync_permissions(header, row)
 
   if $sync_project_permissions then
     @logger.info "Syncing ProjectPermissions from: #{source_user_name} to #{target_user_name}."
-    @uh.sync_project_permissions(source_user_name, target_user_name)
+    @permissions_util.sync_project_permissions(source_user_name, target_user, $sync_workspace_permissions)
+#    @uh.sync_project_permissions(source_user_name, target_user_name)
   end
 
-  if $sync_workspace_permissions then
-    @logger.info "Syncing WorkspacePermissions from: #{source_user_name} to #{target_user_name}."
-    @uh.sync_workspace_permissions(source_user_name, target_user_name)
-  end
+  # if $sync_workspace_permissions then
+  #   @logger.info "Syncing WorkspacePermissions from: #{source_user_name} to #{target_user_name}."
+  #   @uh.sync_workspace_permissions(source_user_name, target_user_name)
+  # end
 
   target_user = @uh.refresh_user(target_user_name)
+
   if $sync_team_memberships then
     @logger.info "Syncing team memberships from: #{source_user_name} to #{target_user_name}."
-    @uh.sync_team_memberships(source_user_name, target_user_name)
+    @permissions_util.replicate_team_memberships_from_user_name(source_user_name, target_user)
+    #@uh.sync_team_memberships(source_user_name, target_user_name)
   end
 end
 
@@ -188,6 +192,10 @@ def go_user_permissions_syncer(input_file)
 
   @uh = RallyUserManagement::UserHelper.new(uh_config)
 
+  @logger.info "Instantiating Permissions Utility..."
+  @permissions_util = RallyUserManagement::PermissionUtil.new(uh_config)
+
+
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
   # in UserHelper, that don't come off the Subscription List, will fail
@@ -210,6 +218,7 @@ def go_user_permissions_syncer(input_file)
   end
 
   # Caching Users can help performance if we're doing updates for a lot of users
+  $enable_user_cache = false
   if $enable_user_cache
     @logger.info "Caching user list..."
     @uh.cache_users()

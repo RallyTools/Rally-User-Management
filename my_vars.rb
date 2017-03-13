@@ -1,6 +1,10 @@
-$my_base_url                = 'https://sandbox.rallydev.com/slm'
-$my_username                = 'user@acme.com'
-$my_password                = 'TopSecret'
+$my_base_url                = 'https://demo-west.rallydev.com/slm'
+$my_username                = 'kcorkan@rallydev.com'
+$my_password                = 'Kanban!!'
+
+# $my_base_url                = 'https://rally1.rallydev.com/slm'
+# $my_username                = 'kcorkan+ts@ca.com'
+# $my_password                = 'RallyON!'
 
 #API Version
 $wsapi_version              = '1.43'
