@@ -76,7 +76,7 @@ $max_cache_age                      = 1
 
 # Flag specifying whether to sync team memberships along with
 # project permissions
-$sync_team_memberships              = true
+#$sync_team_memberships              = true  #in the new code, this is always true.
 
 # Flag specifying whether to sync project permissions
 $sync_project_permissions           = true
@@ -142,18 +142,19 @@ def sync_permissions(header, row)
 #    @uh.sync_project_permissions(source_user_name, target_user_name)
   end
 
+
   # if $sync_workspace_permissions then
   #   @logger.info "Syncing WorkspacePermissions from: #{source_user_name} to #{target_user_name}."
   #   @uh.sync_workspace_permissions(source_user_name, target_user_name)
   # end
 
-  target_user = @uh.refresh_user(target_user_name)
-
-  if $sync_team_memberships then
-    @logger.info "Syncing team memberships from: #{source_user_name} to #{target_user_name}."
-    @permissions_util.replicate_team_memberships_from_user_name(source_user_name, target_user)
-    #@uh.sync_team_memberships(source_user_name, target_user_name)
-  end
+  # target_user = @uh.refresh_user(target_user_name)
+  #
+  # if $sync_team_memberships then
+  #   @logger.info "Syncing team memberships from: #{source_user_name} to #{target_user_name}."
+  #   @permissions_util.replicate_team_memberships_from_user_name(source_user_name, target_user)
+  #   #@uh.sync_team_memberships(source_user_name, target_user_name)
+  # end
 end
 
 def go_user_permissions_syncer(input_file)
