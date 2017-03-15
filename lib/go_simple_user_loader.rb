@@ -225,8 +225,10 @@ def create_user(header, row)
   # look up user
   user = @uh.find_user(username)
   #create user if they do not exist
+  is_new_user = false
 
   if user == nil
+    is_new_user = true
     @logger.info "User #{username} does not yet exist. Creating..."
     begin
         user = @uh.create_user(username, user_fields)
@@ -321,7 +323,7 @@ def create_user(header, row)
 
       # We _are_ ignoring default permissions assigned by Rally, so if we do a user_permissions_sync, those permissions
       # not present on the source user, will be removed from the target
-      if $ignore_default_permissions then
+      if $ignore_default_permissions && is_new_user then
           @logger.info "$ignore_default_permissions == true"
           @logger.info "Permissions will be synced from the template user onto the new user."
           @logger.info "Permissions not present on the template user will be removed from the new user."
