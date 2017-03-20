@@ -357,6 +357,11 @@ def create_user(header, row)
 
         @permissions_util.replicate_team_memberships(source_team_memberships, user)
 
+        if (user.Disabled)
+           #If the user is disabled, but we are copying permisisons, then we should enable the user.
+           user.update({"Disabled" => false});
+        end
+
       end
   end
   @uh.refresh_user(user["UserName"])
