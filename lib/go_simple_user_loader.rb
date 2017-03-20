@@ -30,6 +30,7 @@ fileloc = File.dirname(__FILE__)
 
 require 'rally_api'
 require fileloc + '/rally_user_helper.rb'
+require fileloc + '/permissions_utility.rb'
 require fileloc + '/multi_io.rb'
 require fileloc + '/version.rb'
 require 'csv'
@@ -109,11 +110,11 @@ $TEAMMEMBER_NO  = 'No'
 $type_workspacepermission        = "WorkspacePermission"
 $type_projectpermission          = "ProjectPermission"
 
-def strip_role_from_permission(str)
-    # Removes the role from the Workspace,ProjectPermission String so we're left with just the
-    # Workspace/Project Name
-    str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
-end
+# def strip_role_from_permission(str)
+#     # Removes the role from the Workspace,ProjectPermission String so we're left with just the
+#     # Workspace/Project Name
+#     str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
+# end
 
 def create_user(header, row)
 
@@ -223,10 +224,11 @@ def create_user(header, row)
 
   # look up user
   user = @uh.find_user(username)
-
   #create user if they do not exist
+  is_new_user = false
 
   if user == nil
+    is_new_user = true
     @logger.info "User #{username} does not yet exist. Creating..."
     begin
         user = @uh.create_user(username, user_fields)
@@ -239,6 +241,8 @@ def create_user(header, row)
         @logger.error ex
         return
     end
+  else
+    @logger.warn("User #{username} already exists.  Permissions will be updated, but not overwritten for this user.")
   end
 
   # Check for "type" of DefaultPermissions
@@ -319,116 +323,45 @@ def create_user(header, row)
 
       # We _are_ ignoring default permissions assigned by Rally, so if we do a user_permissions_sync, those permissions
       # not present on the source user, will be removed from the target
-      if $ignore_default_permissions then
+      if $ignore_default_permissions && is_new_user then
           @logger.info "$ignore_default_permissions == true"
           @logger.info "Permissions will be synced from the template user onto the new user."
           @logger.info "Permissions not present on the template user will be removed from the new user."
-          @uh.sync_project_permissions(permission_template_username, user["UserName"])
 
-          # We're not ignoring default permissions assigned by Rally, so, copy the template users permissions onto
-      # the new user additively
+          @permissions_util.sync_project_permissions(permission_template_username,user)
+        #  @uh.sync_project_permissions(permission_template_username, user["UserName"])
       else
-          # Check to see if we have cached user permissions for this user source
-          if $user_permissions_cache.include?(permission_template_username)
-              permission_source_user = $user_permissions_cache[permission_template_username]
-          else
-              # Go to Rally
-              user_fetch                    = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,State,Project,ObjectID,State,TeamMemberships"
-              user_query                    = RallyAPI::RallyQuery.new()
-              user_query.type               = :user
-              user_query.fetch              = user_fetch
-              user_query.page_size          = 200 #optional - default is 200
-              user_query.limit              = 50000 #optional - default is 99999
-              user_query.order              = "UserName Asc"
-              user_query.query_string       = "(UserName = \"#{permission_template_username}\")"
 
-              user_query_results = @rally.find(user_query)
-              n_users = user_query_results.total_result_count
+        # We're not ignoring default permissions assigned by Rally, so, copy the template users permissions onto
+        # the new user additively
+        if $user_permissions_cache.include?(permission_template_username)
+          source_permissions = $user_permissions_cache[permission_template_username]
+        else
+          source_permissions = @permissions_util.read_user_permissions(permission_template_username)
+          $user_permissions_cache[permission_template_username] = source_permissions
+        end
 
-              if n_users == 0 then
-                  @logger.warn "User #{permission_template_username} not found in Rally for source of Default Permissions. Skipping permissions grants for user #{user['UserName']}"
-                  return
-              end
+        if source_permissions.nil? || source_permissions.length == 0
+          @logger.warn "No permissions were found in open projects for User #{permission_template_username} or user #{permission_template_username} may not exist in Rally. Skipping permissions grants for user #{user['UserName']}"
+          return
+        end
 
-              permission_source_user = user_query_results.first
-          end
+        if $user_team_memberships_cache.include?(permission_template_username)
+          source_team_memberships = $user_team_memberships_cache[permission_template_username]
+        else
+          source_team_memberships = @permissions_util.read_user_team_memberships(permission_template_username)
+          $user_team_memberships_cache[permission_template_username] = source_team_memberships
+        end
 
-          workspace_count = 0
-          project_count = 0
-          user_permissions = permission_source_user.UserPermissions
+        @permissions_util.replicate_permissions(source_permissions, user)
 
-          @logger.info "Source User: #{permission_source_user} has #{user_permissions.length} permissions."
+        @permissions_util.replicate_team_memberships(source_team_memberships, user)
 
-          user_permissions.each do | this_permission |
+        if (user.Disabled)
+           #If the user is disabled, but we are copying permisisons, then we should enable the user.
+           user.update({"Disabled" => false});
+        end
 
-              # Set default for team membership
-              team_member = "No"
-
-              # Grab needed data from query/cache
-              permission_type = this_permission._type
-              permission_role = this_permission.Role
-
-              if permission_type == $type_workspacepermission then
-
-                  workspace_count += 1
-                  if workspace_count > $max_workspaces && $test_mode then
-                    @logger.info "  TEST MODE: Breaking workspaces at maximum of #{$max_workspaces}."
-                    break
-                  end
-
-                  workspace_name = strip_role_from_permission(this_permission.Name)
-                  this_workspace = this_permission["Workspace"]
-                  team_member = "N/A"
-
-                  # Don't summarize permissions for closed Workspaces
-                  workspace_state = this_workspace["State"]
-
-                  if workspace_state == "Closed"
-                    next
-                  end
-
-                  @uh.update_workspace_permissions(this_workspace, user, permission_role, new_user)
-              else
-                  project_count += 1
-                  if project_count > $max_projects && $test_mode then
-                    @logger.info "  TEST MODE: Breaking projects at maximum of #{$max_projects}."
-                    next
-                  end
-
-                  this_project = this_permission["Project"]
-
-                  # Don't summarize permissions for closed Projects
-                  project_state = this_project["State"]
-                  if project_state == "Closed"
-                      next
-                  end
-
-                  # Grab the Project Name
-                  project_name = this_project["Name"]
-
-                  # Grab the ObjectID
-                  project_object_id = this_project["ObjectID"]
-
-                  # Convert OID to a string so is_team_member can do string comparison
-                  project_object_id_string = project_object_id.to_s
-
-                  # Determine if user is a team member on this project
-                  these_team_memberships = permission_source_user["TeamMemberships"]
-                  team_member = @uh.is_team_member(project_object_id_string, permission_source_user)
-
-                  @uh.update_project_permissions(this_project, user, permission_role, new_user)
-
-                  @logger.info "Source User: #{permission_template_username}; #{project_name}; #{team_member}"
-
-                  # Update Team Membership (Only applicable for Editor Permissions at Project level)
-                  if permission_role == $EDITOR then
-                    @uh.update_team_membership(user, project_object_id_string, project_name, team_member)
-                  else
-                    @logger.info "  Permission level: #{permission_role}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
-                      "Team Member. No Team Membership update: N/A."
-                  end
-              end
-          end
       end
   end
   @uh.refresh_user(user["UserName"])
@@ -470,6 +403,9 @@ def go_simple_user_loader(input_file)
 
   @uh = RallyUserManagement::UserHelper.new(uh_config)
 
+  @logger.info "Instantiating Permissions Utility..."
+  @permissions_util = RallyUserManagement::PermissionUtil.new(uh_config)
+
   # Note: pre-fetching Workspaces and Projects can help performance
   # Plus, we pretty much have to do it because later Workspace/Project queries
   # in UserHelper, that don't come off the Subscription List, will fail
@@ -493,8 +429,14 @@ def go_simple_user_loader(input_file)
 
   # User Permissions cache
   $user_permissions_cache = {}
+  $user_team_memberships_cache = {}
 
   # Caching Users can help performance if we're doing updates for a lot of users
+
+  #users will be cached as they are loaded and preloading all users will cause problems for customers with large numbers of users
+  #chances are that we need less users than exist in the system
+  #recommend setting enable_user_cache to false
+  $enable_user_cache = false
   if $enable_user_cache
     @logger.info "Caching user list..."
     @uh.cache_users()

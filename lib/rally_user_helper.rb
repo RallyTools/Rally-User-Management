@@ -1508,7 +1508,7 @@ module RallyUserManagement
         # Construct payload object
         my_payload = {}
         my_team_member_setting = {}
-        my_team_member_setting ["TeamMember"] = "true"
+        my_team_member_setting["TeamMember"] = "true"
         my_payload["projectuser"] = my_team_member_setting
 
         args = {:method => :put}

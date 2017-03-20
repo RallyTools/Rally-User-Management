@@ -25,6 +25,7 @@ require fileloc + '/rally_user_helper.rb'
 require fileloc + '/multi_io.rb'
 require fileloc + '/version.rb'
 require 'csv'
+require 'logger'
 
 $my_base_url                   = "https://rally1.rallydev.com/slm"
 
@@ -53,7 +54,7 @@ def update_username(header, row)
   rally_user = @rally.find(user_query)
 
   if rally_user.total_result_count == 0
-    puts "Rally user #{exist_username} not found...skipping"
+    @logger.info("Rally user #{exist_username} not found...skipping")
   else
     begin
       rally_user_toupdate = rally_user.first()
@@ -63,9 +64,9 @@ def update_username(header, row)
         fields["EmailAddress"] = new_username
       end
       rally_user_updated = @rally.update(:user, rally_user_toupdate.ObjectID, fields) #by ObjectID
-      puts "Rally user #{exist_username} successfully changed to #{new_username}"
+      @logger.info("Rally user #{exist_username} successfully changed to #{new_username}")
     rescue => ex
-      puts "Rally user #{exist_username} not updated due to error"
+      @logger.warn("Rally user #{exist_username} not updated due to error:  #{ex.message}")
       puts ex
     end
   end
@@ -78,6 +79,15 @@ def go_change_usernames(input_file)
   # Load (and maybe override with) my personal/private variables from a file...
   my_vars= File.dirname(__FILE__) + "/../my_vars.rb"
   if FileTest.exist?( my_vars ) then require my_vars end
+
+  log_file = File.open("change_usernames.log", "a")
+  if $logger_mode == :stdout then
+    @logger = Logger.new RallyUserManagement::MultiIO.new(STDOUT, log_file)
+  else
+    @logger = Logger.new(log_file)
+  end
+  @logger.level = Logger::INFO #DEBUG | INFO | WARNING | FATAL
+
 
   #Setting custom headers
   @user_mgmt_version      = RallyUserManagement::Version.new()
@@ -92,6 +102,7 @@ def go_change_usernames(input_file)
   config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()
   config[:version]        = $wsapi_version
 
+  @logger.info("Connecting to Rally API...")
   @rally = RallyAPI::RallyRestJson.new(config)
 
   $users_filename = input_file
