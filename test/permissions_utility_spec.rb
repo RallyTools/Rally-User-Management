@@ -8,8 +8,8 @@ describe "Given the PermissionsUtil class and a user" do
     @logger = create_logger("permissions_utility_spec.log")
     @rally = create_rally_connection(TestConfig::RALLY_USER, TestConfig::RALLY_PASSWORD, @logger, TestConfig::RALLY_URL)
     config = {
-        "rally_api_obj" => @rally,
-        "logger" => @logger
+        :rally_api => @rally,
+        :logger => @logger
     }
     @permissions_util = RallyUserManagement::PermissionUtil.new(config)
     user_name = unique_name() + "@test.com"
@@ -18,7 +18,7 @@ describe "Given the PermissionsUtil class and a user" do
   end
 
   after(:all) do
-    #@user.delete()
+   @user.delete
   end
 
   it "should return empty array if the username was not found when reading permissions" do
@@ -211,16 +211,6 @@ describe "Given the PermissionsUtil class and a user" do
     expect(ret).to be_nil
   end
 
-  it "should error gracefully if the running user does not have appropriate permissions" do
-
-  end
-
-  it "should not update permissions for a subscription administrator" do
-
-  end
-
-  it "should not copy permissions from a subscription administrator" do
-
-  end
+  ##todo: more tests
 
 end

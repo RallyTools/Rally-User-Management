@@ -75,3 +75,5 @@ The contents of this Github repository include:
 - README.pdf                                    - User guide PDF
 
 Please clone the repo and save to a folder on your local drive.
+
+To run the tests for the permissions utility, you will need to make a copy of the example_test_configuration_helper.rb file and update it with your own credentials to use for testing.
