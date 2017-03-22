@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # Copyright (c) 2014 Rally Software Development
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -35,8 +36,10 @@ else
 end
 
 if File.exists?($input_filename) == false
-  puts "Simple user loader file #{$input_filename} not found. Exiting."
+  puts "Simple user loader file '#{$input_filename}' not found. Exiting."
   exit
+else
+  puts "Using User permissions sync list file: '#{$input_filename}'."
 end
 
 begin
