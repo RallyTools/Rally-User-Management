@@ -65,11 +65,10 @@ The contents of this Github repository include:
 - user_permissions_loader.rb                    - Script to upload users and permissions
 - user_permissions_loader_template.txt          - Template file showing what an upload file should look like
 - user_permissions_summary.rb                   - Script to output summary of user permissions AND Team Membership for all users
-- user_permissions_syncer.rb                   - Script to synchronize permissions and team memberships from a list of existing users in Rally to a list of target users needing updated permissions.
+- user_permissions_syncer.rb                    - Script to synchronize permissions and team memberships from a list of existing users in Rally to a list of target users needing updated permissions.
 - user_permissions_template_generator.rb        - Script to generate template of WorkspacePermissions and ProjectPermissions for all users in the new_user_list file
 - user_sync_template.txt                        - Template/example file for input to user_permissions_syncer.rb
 - user_team_membership_summary.rb               - Script that summarizes just team membership(s) for all users
-- user_sync_template.txt - Template/example file for input to user_permissions_syncer.rb
 - README.docx                                   - User guide Word document
 - README.md                                     - This README
 - README.pdf                                    - User guide PDF
