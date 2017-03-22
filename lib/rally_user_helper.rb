@@ -1340,7 +1340,9 @@ module RallyUserManagement
       new_user_obj = {}
 
       new_user_obj["UserName"] = user_name.downcase
-      new_user_obj["EmailAddress"] = user_name.downcase
+      if new_user_obj["EmailAddress"].nil?
+        new_user_obj["EmailAddress"] = user_name.downcase
+      end
 
       fields.each_pair do | key, value |
         new_user_obj[key] = value
