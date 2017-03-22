@@ -35,8 +35,10 @@ else
 end
 
 if File.exists?($user_synclist_filename) == false
-  puts "User permissions sync list file #{$user_synclist_filename} not found. Exiting."
+  puts "User permissions sync list file '#{$user_synclist_filename}' not found. Exiting."
   exit
+else
+  puts "Using User permissions sync list file: '#{$user_synclist_filename}'."
 end
 
 begin
