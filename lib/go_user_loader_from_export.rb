@@ -235,7 +235,12 @@ def create_user(header, row)
     user_fields["Role"] = role
   end
 
-########
+  # Find all custom fields
+  cust_field_hash = row.to_hash.select{ |k,v| k[/^c_/] }
+  cust_field_hash.each do |k,v|
+    user_fields[k] = v 
+  end
+
 
   if !default_permissions_field.nil? then
     default_permissions = default_permissions_field.strip
@@ -494,7 +499,9 @@ def go_user_loader_from_export(input_file)
   $open_projects = @uh.get_workspace_project_hash()
 
   $input_filename = input_file
-  input  = CSV.read($input_filename, {:col_sep => $my_delim, :encoding => $file_encoding})
+  #input  = CSV.read($input_filename, {:col_sep => $my_delim, :encoding => $file_encoding})
+  # the above line barfed on German name chacacters...
+  input  = CSV.read($input_filename, {:col_sep => $my_delim, :encoding => 'ISO-8859-1'})
 
   header = input.first #ignores first line
 
