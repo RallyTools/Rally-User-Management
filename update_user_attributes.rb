@@ -20,7 +20,8 @@
 
 #include for rally json library gem
 require 'rally_api'
-require 'rally_user_management'
+#require 'rally_user_management'
+require './lib/rally_user_helper.rb'
 require 'csv'
 require './lib/go_update_user_attributes.rb'
 
@@ -31,6 +32,13 @@ if $input_filename_arg == nil
   $input_filename             = 'update_user_attributes_template.txt'
 else
   $input_filename = File.dirname(__FILE__) + "/" + $input_filename_arg
+end
+
+if File.exists?($input_filename) == false
+  puts "Update user attributes input file '#{$input_filename}' not found. Exiting."
+  exit
+else
+  puts "Update user attributes input file: '#{$input_filename}'."
 end
 
 begin
