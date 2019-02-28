@@ -25,16 +25,53 @@ require './lib/multi_io.rb'
 require './lib/rally_user_helper.rb'
 require './lib/go_update_project_permissions.rb'
 
-$project_identifier_arg = ARGV[0]
-$new_permission_arg = ARGV[1]
+#
+# Command line options can be one of two different styles:
+#   1) ruby update_project_permissions.rb file:MyPPP.csv            # Get Project/Permission pairs from file 'MyPPP.csv'
+#   2) ruby update_project_permissions.rb "My Project" "Editor"     # Use the Project Name
+#       ruby update_project_permissions 12345678910 "No Access"     # Use the Project ObjectID
+#
 
-if $project_identifier_arg.nil? || $new_permission_arg.nil? then
-    puts "Usage: ruby update_project_permissions.rb \"My Project\" \"Editor\""
-    puts "or: ruby update_project_permissions 12345678910 \"No Access\""
-    puts "Where in number form, the project identifier is the Project's ObjectID."
-    exit
+put_usage = false # Assume all is well
+
+case ARGV.length
+# ----------------------------------------
+when 1
+    if ARGV[0][0..4] != 'file:'
+        puts "ERROR: When using only 1 arguemnt, it must begin with the string 'file:'"
+        put_usage = true
+    end
+    input_file = ARGV[0][5..-1]
+
+    all_projects = []
+    CSV.foreach(input_file,  {:col_sep => ",", :encoding => 'UTF-8'}) do |row|
+        if row[0][0] != '#'  # ignore comment lines in input_file
+            all_projects.push(row)
+        end
+    end
+# ----------------------------------------
+when 2
+    $project_identifier_arg = ARGV[0]
+    $new_permission_arg = ARGV[1]
+    all_projects = [[$project_identifier_arg, $new_permission_arg]]
+# ----------------------------------------
+else
+    put_usage = true
+end
+
+if put_usage == true
+    puts "Usage: This script can be invoked one of two ways:"
+    puts "\t1) ruby #{PROGRAM_NAME} file:MyPPP.csv            # Get Project/Permission pairs from file 'MyPPP.csv'"
+    puts "\t2) ruby #{PROGRAM_NAME} 'My Project' 'Editor'     # Use the Project Name"
+    puts "\t   ruby #{PROGRAM_NAME} 12345678910' 'No Access'  # Use the Project ObjectID"
+    exit(-1)
 end
 
 begin
-    go_update_project_permissions($project_identifier_arg, $new_permission_arg)
+    all_projects.each_with_index do |this_project, this_project_index|
+        $project_identifier_arg = this_project[0]
+        $new_permission_arg     = this_project[1]
+        puts "(#{this_project_index+1} of #{all_projects.length}) Processing Project='#{$project_identifier_arg}'  Permissions='#{$new_permission_arg}'"
+        #go_update_project_permissions($project_identifier_arg, $new_permission_arg)
+    end
 end
