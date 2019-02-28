@@ -72,6 +72,6 @@ begin
         $project_identifier_arg = this_project[0]
         $new_permission_arg     = this_project[1]
         puts "(#{this_project_index+1} of #{all_projects.length}) Processing Project='#{$project_identifier_arg}'  Permissions='#{$new_permission_arg}'"
-        #go_update_project_permissions($project_identifier_arg, $new_permission_arg)
+        go_update_project_permissions($project_identifier_arg, $new_permission_arg)
     end
 end
